@@ -25,3 +25,14 @@ class DealScoreResult:
     recommendation: str
     explanation: list[ExplanationFactor] = field(default_factory=list)
     scoring_version: str = "1.0.0"
+
+
+@dataclass(frozen=True, slots=True)
+class AnalyzerOutput:
+    """One analyzer's contribution before the Scoring Engine combines them
+    (Band 05 architecture: each analyzer module is independently testable
+    and returns its own explanation factors — never a bare number)."""
+
+    score_contribution: float  # signed points added to/subtracted from the base score
+    confidence: float  # 0.0-1.0 — this analyzer's confidence in its own contribution
+    factors: list[ExplanationFactor] = field(default_factory=list)

@@ -88,6 +88,24 @@ Both implement the same `MarketplaceProviderProtocol`, so `IngestionService`
 and `AsyncIntervalScheduler` (the scheduler foundation) work identically
 regardless of source.
 
+## DealBrain (scoring)
+
+`backend/app/modules/scoring/` implements the Band 05 architecture:
+`PriceAnalyzer`, `SpecificationAnalyzer`, `SellerAnalyzer`, `RiskAnalyzer`,
+`RepairFeasibilityAnalyzer` (domain/analyzers.py, each pure and independently
+testable) → `ScoringEngine` combines their `AnalyzerOutput`s into a
+0-100 score → `ExplanationGenerator` derives the recommendation label and
+orders factors by impact. `GET /api/v1/offers/{id}/deal-score` computes,
+persists (append-only, versioned via `scoring_version`) and returns a score.
+
+**The v1 scoring weights are a documented starting point, not a spec-mandated
+formula** — Band 05 defines principles (explainable, deterministic, unknown
+values reduce confidence not correctness, no hidden rules) but not concrete
+numbers. Market value is estimated from the median price of comparable
+active listings in the same category (DealBrain has no external pricing
+data source); confidence drops sharply below 3 comparables. Expect to tune
+the constants in `domain/analyzers.py` once real usage data exists.
+
 ## Status
 
 See the 20 project tasks tracked for this build for current progress
