@@ -19,6 +19,8 @@ from fastapi.responses import JSONResponse
 from app.core.config import get_settings
 from app.core.exceptions import DomainError, ErrorResponse
 from app.core.logging import configure_logging, get_logger
+from app.modules.auth.presentation.router import router as auth_router
+from app.modules.users.presentation.router import router as users_router
 
 logger = get_logger(__name__)
 
@@ -85,8 +87,10 @@ def _mount_routers(app: FastAPI) -> None:
     """Mount each module's presentation router under /api/v1.
 
     Modules register their router here as soon as their presentation layer
-    exists (auth/users land in Task #4, offers in #5, scoring in #6, etc.).
+    exists (offers/scoring/repair/notifications land in later tasks).
     """
+    app.include_router(auth_router)
+    app.include_router(users_router)
 
 
 app = create_app()

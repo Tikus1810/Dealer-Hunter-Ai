@@ -27,6 +27,17 @@ session_factory = async_sessionmaker(bind=_engine, expire_on_commit=False, autof
 
 
 async def get_db_session() -> AsyncGenerator[AsyncSession]:
-    """FastAPI dependency yielding a request-scoped AsyncSession."""
+    """FastAPI dependency yielding a request-scoped AsyncSession.
+
+    Unit-of-work per request: commits once the route handler returns
+    successfully, rolls back if it raised (including `DomainError`s such as
+    `ConflictError`/`NotFoundError`), so route handlers never call
+    `session.commit()`/`rollback()` themselves.
+    """
     async with session_factory() as session:
-        yield session
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise

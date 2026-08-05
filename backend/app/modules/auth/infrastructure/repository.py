@@ -1,0 +1,39 @@
+"""SQLAlchemy implementation of `RefreshTokenRepositoryProtocol` (Band 03)."""
+
+from __future__ import annotations
+
+import uuid
+from datetime import UTC, datetime
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.modules.auth.infrastructure.models import RefreshTokenModel
+
+
+class SqlAlchemyRefreshTokenRepository:
+    """Implements `RefreshTokenRepositoryProtocol`
+    (app.modules.auth.application.interfaces)."""
+
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def store(self, *, user_id: uuid.UUID, jti: str, expires_at: datetime) -> None:
+        self._session.add(
+            RefreshTokenModel(user_id=user_id, token_jti=jti, expires_at=expires_at)
+        )
+        await self._session.flush()
+
+    async def is_valid(self, jti: str) -> bool:
+        stmt = select(RefreshTokenModel).where(RefreshTokenModel.token_jti == jti)
+        row = (await self._session.execute(stmt)).scalar_one_or_none()
+        if row is None or row.revoked_at is not None:
+            return False
+        return row.expires_at > datetime.now(UTC)
+
+    async def revoke(self, jti: str) -> None:
+        stmt = select(RefreshTokenModel).where(RefreshTokenModel.token_jti == jti)
+        row = (await self._session.execute(stmt)).scalar_one_or_none()
+        if row is not None and row.revoked_at is None:
+            row.revoked_at = datetime.now(UTC)
+            await self._session.flush()

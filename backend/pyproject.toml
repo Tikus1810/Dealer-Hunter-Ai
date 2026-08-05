@@ -11,6 +11,17 @@ target-version = "py313"
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
 
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI's `Depends(...)`/`Query(...)`/etc. as argument defaults is the
+# framework's own idiom, not the mutable-default-argument bug B008 flags.
+extend-immutable-calls = [
+    "fastapi.Depends",
+    "fastapi.Query",
+    "fastapi.Path",
+    "fastapi.Header",
+    "fastapi.Body",
+]
+
 [tool.mypy]
 python_version = "3.13"
 strict = true
