@@ -70,6 +70,24 @@ alembic upgrade head        # apply migrations
 python -m scripts.seed      # seed the 4 primary device categories
 ```
 
+## Marketplace Engine
+
+`backend/app/modules/offers/` implements the Band 07 pipeline (Source →
+Provider → Fetch → Normalize → Validate → Deduplicate → Persist), with two
+providers:
+
+- **`EbayApiProvider`** — eBay.com/eBay.de's official Browse API (OAuth2
+  client-credentials). Needs `EBAY_CLIENT_ID`/`EBAY_CLIENT_SECRET` in `.env`
+  (a registered eBay developer application) — without them it raises a
+  clear error rather than silently returning nothing.
+- **`KleinanzeigenProvider`** — see the ToS note below. CSS selectors were
+  confirmed against the live site on 2026-08-05; re-verify before relying
+  on them, markup changes are expected over time.
+
+Both implement the same `MarketplaceProviderProtocol`, so `IngestionService`
+and `AsyncIntervalScheduler` (the scheduler foundation) work identically
+regardless of source.
+
 ## Status
 
 See the 20 project tasks tracked for this build for current progress
@@ -84,6 +102,10 @@ papered over with placeholders:
   (`KLEINANZEIGEN_PROVIDER_ENABLED` defaults to `false`).
 - **Firebase Cloud Messaging** (notifications) requires a real Firebase
   project + service account credentials, supplied by the project owner.
+- **eBay developer credentials** are needed for `EbayApiProvider` to hit
+  real endpoints — until then it's fully tested against mocked HTTP
+  responses (`tests/unit/test_ebay_api_provider.py`) but unverified against
+  the live API.
 - Bands 11–15 and 17–20 were delivered as section skeletons rather than
   filled specifications; implementation follows established industry
   practice for those areas rather than a documented Deal Hunter AI–specific

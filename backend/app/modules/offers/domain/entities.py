@@ -6,6 +6,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
+from typing import Any
 
 
 class OfferCategory(StrEnum):
@@ -39,3 +40,15 @@ class Offer:
     url: str = ""
     created_at: datetime | None = None
     fetched_at: datetime | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class RawListing:
+    """Provider-native listing data before normalization (Band 07 pipeline step 1-2:
+    Provider -> Fetch). `payload` shape depends entirely on `source` — the
+    matching branch in `OfferNormalizer` is the only code allowed to read it."""
+
+    source: OfferSource
+    source_listing_id: str
+    category: OfferCategory
+    payload: dict[str, Any]
