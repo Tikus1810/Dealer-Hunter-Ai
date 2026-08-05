@@ -21,6 +21,16 @@ class ReplacementPart:
 
 
 @dataclass(frozen=True, slots=True)
+class DetectedFault:
+    """One fault detected by `FaultAnalyzer` (Band 06 functional requirement:
+    "Separate confirmed facts from assumptions")."""
+
+    category: str  # normalized, e.g. "display", "battery" — see catalog.py
+    is_confirmed: bool  # True: explicitly in reported_defects; False: inferred from text
+    detail: str  # the original reported string or matched listing phrase
+
+
+@dataclass(frozen=True, slots=True)
 class RepairReport:
     offer_id: uuid.UUID
     repair_score: int  # 0-100, higher = more worthwhile to repair

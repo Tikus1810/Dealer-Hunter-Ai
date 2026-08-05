@@ -12,3 +12,9 @@ class RepairAnalysisServiceProtocol(Protocol):
     async def analyze(
         self, offer_id: uuid.UUID, *, reported_defects: list[str]
     ) -> RepairReport: ...
+
+
+class RepairReportRepositoryProtocol(Protocol):
+    async def save(self, report: RepairReport) -> None: ...
+
+    async def get_latest_for_offer(self, offer_id: uuid.UUID) -> RepairReport | None: ...

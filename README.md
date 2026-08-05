@@ -106,6 +106,23 @@ active listings in the same category (DealBrain has no external pricing
 data source); confidence drops sharply below 3 comparables. Expect to tune
 the constants in `domain/analyzers.py` once real usage data exists.
 
+## RepairBrain (repair analysis)
+
+`backend/app/modules/repair/` implements the Band 06 architecture:
+`FaultAnalyzer` (splits `reported_defects` — confirmed facts — from
+listing-text keyword matches — inferred assumptions) → `TimeEstimator` +
+`PartsResolver` (parts and tools, independent from scoring per Band 06) →
+`CostEstimator` → `RepairScoringEngine` → `RecommendationGenerator` (every
+inferred fault gets its own risk note, satisfying Band 06's "mark uncertain
+estimates clearly"). `POST /api/v1/offers/{id}/repair-report` computes,
+persists (append-only, versioned via `report_version`) and returns a report.
+DealBrain's `RepairFeasibilityAnalyzer` (Task #6) can fold a `RepairReport`
+into a deal score once a caller has both — that wiring happens in Task #9.
+
+Same honesty note as DealBrain: part prices, labor rates and repair times
+in `domain/catalog.py` are indicative reference values, not a live
+parts-supplier feed — there is no such data source yet.
+
 ## Status
 
 See the 20 project tasks tracked for this build for current progress
