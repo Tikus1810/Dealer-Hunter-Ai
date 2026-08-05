@@ -123,6 +123,30 @@ Same honesty note as DealBrain: part prices, labor rates and repair times
 in `domain/catalog.py` are indicative reference values, not a live
 parts-supplier feed — there is no such data source yet.
 
+## Vision AI
+
+`backend/app/modules/vision/` implements the Band 08 architecture, scoped
+to what's achievable without a vision-model credential (see "Known gaps"):
+`ImagePreprocessor` (fetches + decodes each listing image; a fetch/decode
+failure becomes an "unreachable" observation, not an aborted analysis) →
+`ObservationEngine` (classical blur detection via edge-variance, plus a
+resolution check) → `ConfidenceEstimator` (penalizes both poor image
+quality and an incomplete image set) → `OutputFormatter`.
+`GET /api/v1/offers/{id}/vision-observation` — compute-only, not persisted
+(no `vision_observations` table exists; add one if/when DealBrain or
+RepairBrain need to consume stored observations instead of calling this
+endpoint directly).
+
+**`cosmetic_condition` is always `"not_available"` in v1**, with a note
+explaining why — real damage/condition detection from photos needs an
+actual vision model (Claude vision API, or similar), which needs a
+provider decision + credentials neither of which exist yet. Rather than
+guess, the field honestly reports what wasn't determined, per Band 08's
+own requirement to "distinguish clearly between observed facts and
+uncertain inferences." Swapping in a real vision model later doesn't
+change `ObservationEngine`'s image-quality checks — it's a new observation
+source in the `OutputFormatter` step, not a rewrite of the pipeline.
+
 ## Status
 
 See the 20 project tasks tracked for this build for current progress

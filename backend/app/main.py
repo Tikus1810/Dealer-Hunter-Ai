@@ -23,6 +23,7 @@ from app.modules.auth.presentation.router import router as auth_router
 from app.modules.repair.presentation.router import router as repair_router
 from app.modules.scoring.presentation.router import router as scoring_router
 from app.modules.users.presentation.router import router as users_router
+from app.modules.vision.presentation.router import router as vision_router
 
 logger = get_logger(__name__)
 
@@ -95,6 +96,7 @@ def _mount_routers(app: FastAPI) -> None:
     app.include_router(users_router)
     app.include_router(scoring_router)
     app.include_router(repair_router)
+    app.include_router(vision_router)
 
 
 app = create_app()
