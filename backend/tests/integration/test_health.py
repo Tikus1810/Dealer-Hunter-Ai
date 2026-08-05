@@ -1,0 +1,15 @@
+"""Integration test for the health endpoint — verifies the app wires up correctly."""
+
+from __future__ import annotations
+
+from httpx import ASGITransport, AsyncClient
+
+from app.main import app
+
+
+async def test_health_endpoint_returns_ok() -> None:
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get("/api/v1/health")
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
