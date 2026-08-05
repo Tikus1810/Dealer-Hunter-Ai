@@ -23,10 +23,10 @@ def build_engine(settings: Settings) -> AsyncEngine:
 
 
 _engine = build_engine(get_settings())
-_session_factory = async_sessionmaker(bind=_engine, expire_on_commit=False, autoflush=False)
+session_factory = async_sessionmaker(bind=_engine, expire_on_commit=False, autoflush=False)
 
 
 async def get_db_session() -> AsyncGenerator[AsyncSession]:
     """FastAPI dependency yielding a request-scoped AsyncSession."""
-    async with _session_factory() as session:
+    async with session_factory() as session:
         yield session

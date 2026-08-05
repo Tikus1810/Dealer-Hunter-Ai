@@ -21,6 +21,7 @@ exclude = ["alembic/"]
 asyncio_mode = "auto"
 testpaths = ["tests"]
 addopts = "--cov=app --cov-report=term-missing"
+markers = ["integration: requires a live PostgreSQL database (see tests/integration/conftest.py)"]
 
 [tool.coverage.run]
 branch = true

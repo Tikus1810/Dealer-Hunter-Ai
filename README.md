@@ -58,7 +58,16 @@ API docs: `http://localhost:8000/api/docs`
 
 ```bash
 cd backend
-pytest
+pytest -m "not integration"   # unit tests only, no services required
+pytest                        # full suite — needs Postgres running (see docker-compose above)
+```
+
+## Database
+
+```bash
+cd backend
+alembic upgrade head        # apply migrations
+python -m scripts.seed      # seed the 4 primary device categories
 ```
 
 ## Status

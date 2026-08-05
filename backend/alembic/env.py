@@ -2,8 +2,6 @@
 
 Reads the sync database URL from application settings so migrations use the
 same connection config as the app (Band 09: migration-first workflow).
-Concrete models are registered on `Base.metadata` in Task #3 (Datenbankschema);
-until then this scaffold produces empty (no-op) autogenerate diffs.
 """
 
 from __future__ import annotations
@@ -14,6 +12,7 @@ from sqlalchemy import engine_from_config, pool
 
 from alembic import context
 from app.core.config import get_settings
+from app.db import models  # noqa: F401  (registers all tables on Base.metadata)
 from app.db.base import Base
 
 config = context.config
