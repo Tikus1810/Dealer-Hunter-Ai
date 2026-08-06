@@ -5,16 +5,35 @@ Flutter client for [Deal Hunter AI](../README.md), implementing
 [Band 18](../Band%2018/Band_18_UI_UX_Design_System.md) (UI/UX Design
 System — a template band, see the root README's "Known gaps").
 
-## Status: foundation (Task #11)
+## Status: foundation + core screens (Tasks #11-#12)
 
-This is the app **skeleton**: Clean Architecture layering, Riverpod DI,
-go_router navigation with every Band 4 "Core Feature" reachable, a Material
-3 light/dark design system, and a fully working Authentication vertical
-slice (register/login/logout/token-refresh) wired end-to-end against the
-real backend API. Every other feature (Dashboard content, Search Profiles,
-Offer List/Details, Deal/Repair Analysis, Favorites, Notifications,
-Settings) is a placeholder screen — real UI for those is **Task #12**
-("Flutter Core-Screens").
+Every Band 4 "Core Feature" now has real UI wired end-to-end against the
+real backend API, not just a reachable placeholder:
+
+- **Offers** — category-filtered, paginated list (`OfferListScreen`) and
+  detail view (`OfferDetailScreen`) with a favorite toggle and links into
+  Deal/Repair Analysis.
+- **Deal Analysis** — DealBrain score, confidence, market value/total cost,
+  and the full explanation-factor breakdown (`DealAnalysisScreen`).
+- **Repair Analysis** — an on-demand form (known defects in, RepairBrain
+  report out: cost, time, difficulty, parts, risk notes)
+  (`RepairAnalysisScreen`).
+- **Favorites** — list (each row's offer fetched individually — see the
+  screen's doc comment for why) with optimistic add/remove
+  (`FavoritesController`).
+- **Search Profiles** — full CRUD: list, create/edit bottom sheet, delete
+  with confirmation (`SearchProfilesScreen`).
+- **Notifications** — inbox with mark-as-read, plus a preferences bottom
+  sheet (one switch per event×channel, opt-out model)
+  (`NotificationsScreen`).
+- **Settings** — notification preferences entry point + logout.
+- **Dashboard** — navigation hub (built in Task #11, still the "Dashboard"
+  screen; deeper dashboard *content* like a recent-deals feed was judged
+  out of scope for this pass and left as a natural follow-up).
+
+Only Authentication (Task #11) and everything above (Task #12) has real
+UI; there is no remaining placeholder screen from the original Band 4
+feature list.
 
 **Not yet verified against a real Flutter SDK.** This sandbox has no
 Flutter/Dart toolchain installed, so none of this has been run through
@@ -71,9 +90,11 @@ lib/
     presentation/          Riverpod controllers + screens
 ```
 
-Only `auth/` has all three layers filled in — it's the concrete example
-the other 9 features (dashboard, search_profiles, offers, deal_analysis,
-repair_analysis, favorites, notifications, settings) follow in Task #12.
+Every feature now follows this layering (`auth/` was the Task #11
+prototype; the rest landed in Task #12). No hand-written DTO uses code
+generation (no `json_serializable`/`freezed`) — every domain entity has a
+plain `fromJson` factory, matching the backend's own "explicit over
+magic" style and keeping this buildable without `build_runner`.
 
 ## Networking (Band 4: "automatic token refresh, retry policy, central
 error handling")
@@ -115,7 +136,10 @@ chooses a brand typeface.
 
 ## Known gaps
 
-- No Flutter SDK in the sandbox this was built in — see "Status" above.
+- No Flutter SDK in the sandbox this was built in — see "Status" above;
+  this now applies to significantly more code than at the end of Task #11
+  (82 files / ~4200 lines total), so there's more surface area a real
+  `flutter analyze`/`test` run could still turn up something in.
 - `flutter_secure_storage` needs platform-level setup before it works on a
   real device/emulator (Android `minSdkVersion` 18+; iOS Keychain
   entitlements are usually automatic). Not yet verified on either platform.
@@ -123,3 +147,15 @@ chooses a brand typeface.
   its doc comment) — a deliberate v1 simplification, not an oversight.
 - No app icon or splash screen yet — natural Task #19 (Branding) follow-up
   once `flutter create` has generated the platform folders they'd live in.
+- The offer detail screen's "Original-Angebot anzeigen" button shows the
+  source URL in a dialog rather than opening it — no `url_launcher`
+  dependency was added to keep this task's package-verification surface
+  smaller; trivial to wire in later.
+- Favorites and the notification inbox fetch all pages up front rather
+  than paginating in the UI (`FavoritesRepository.listAllFavorites`,
+  `NotificationsRepository.listAllNotifications`) — reasonable at the list
+  sizes those features realistically have today; revisit if that changes.
+- No widget tests (`testWidgets`) — only pure-Dart unit tests against fake
+  repositories (`ErrorMapper`, `AuthController`, `FavoritesController`,
+  `NotificationPreferencesController`). Widget/golden tests are more
+  naturally Task #13's ("Test-Framework & CI Quality Gates") territory.

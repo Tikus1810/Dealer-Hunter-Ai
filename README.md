@@ -227,18 +227,20 @@ delivery is just skipped, same pattern as the other optional providers.
 
 ## Flutter App (Band 4 / Band 18)
 
-`mobile/` implements the Band 4 foundation: feature-first Clean
-Architecture, Riverpod 2.x state management, go_router navigation
-(auth-gated, every Band 4 "Core Feature" reachable), a Material 3
-light/dark design system built from token files, and a fully working
-Authentication vertical slice (register/login/logout, automatic token
-refresh, retry policy) wired against the real backend API. Every other
-feature is a placeholder screen — real UI for those is Task #12. See
-[mobile/README.md](mobile/README.md) for the full architecture writeup,
-including the **"not yet verified against a real Flutter SDK"** caveat —
-this repo's sandbox has no Flutter toolchain, so `flutter pub get`/
-`analyze`/`test` need to be run for the first time by whoever picks this
-up next.
+`mobile/` implements Band 4 end-to-end: feature-first Clean Architecture,
+Riverpod 2.x state management, go_router navigation (auth-gated), a
+Material 3 light/dark design system built from token files, and every
+Band 4 "Core Feature" with real UI wired against the real backend API —
+Authentication, Dashboard, Search Profiles (full CRUD), Offer List/
+Details, Deal Analysis, Repair Analysis, Favorites, Notifications
+(inbox + preferences), Settings. See [mobile/README.md](mobile/README.md)
+for the full architecture writeup, including the **"not yet verified
+against a real Flutter SDK"** caveat — this repo's sandbox has no Flutter
+toolchain, so `flutter pub get`/`analyze`/`test` need to be run for the
+first time by whoever picks this up next (82 files, ~4200 lines, all
+individually checked against current package docs while writing them —
+see mobile/README.md's "Status" for exactly what that does and doesn't
+cover).
 
 ## Status
 
