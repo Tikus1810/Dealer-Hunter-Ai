@@ -1,0 +1,44 @@
+name: deal_hunter_ai
+description: >
+  Deal Hunter AI — Flutter client for discovering, scoring and repair-analyzing
+  second-hand tech deals (Windows laptops, MacBooks, iPhones, game consoles).
+publish_to: "none"
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+  flutter: ">=3.22.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State management (Band 04: Riverpod, immutable state, UI/business-logic
+  # separation). Pinned to the 2.x line rather than the newer 3.x major
+  # release — 3.x rewrote core APIs (StateProvider moved to legacy.dart,
+  # unified Notifier base class, ProviderException wrapping) shortly before
+  # this was written, and this sandbox has no Flutter SDK/analyzer to verify
+  # against it. 2.x is stable, extensively documented, and a contained
+  # upgrade later.
+  flutter_riverpod: ^2.6.1
+
+  # Navigation (Band 04: go_router, deep-linking ready). Only the stable
+  # imperative API (GoRouter/GoRoute/GoRouterState) is used — not the
+  # codegen-based GoRouteData/TypedGoRoute surface, which changed more
+  # across major versions.
+  go_router: ^17.4.0
+
+  # REST client (Band 04: automatic token refresh, retry policy, central
+  # error handling) — see lib/core/network/.
+  dio: ^5.11.0
+
+  # Encrypted on-device storage for JWT access/refresh tokens.
+  flutter_secure_storage: ^11.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

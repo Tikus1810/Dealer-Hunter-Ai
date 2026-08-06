@@ -225,6 +225,21 @@ Without `FCM_PROJECT_ID`/`FCM_CREDENTIALS_JSON_PATH` set, notifications
 still work end-to-end (persisted, listed, marked read, preferences) — push
 delivery is just skipped, same pattern as the other optional providers.
 
+## Flutter App (Band 4 / Band 18)
+
+`mobile/` implements the Band 4 foundation: feature-first Clean
+Architecture, Riverpod 2.x state management, go_router navigation
+(auth-gated, every Band 4 "Core Feature" reachable), a Material 3
+light/dark design system built from token files, and a fully working
+Authentication vertical slice (register/login/logout, automatic token
+refresh, retry policy) wired against the real backend API. Every other
+feature is a placeholder screen — real UI for those is Task #12. See
+[mobile/README.md](mobile/README.md) for the full architecture writeup,
+including the **"not yet verified against a real Flutter SDK"** caveat —
+this repo's sandbox has no Flutter toolchain, so `flutter pub get`/
+`analyze`/`test` need to be run for the first time by whoever picks this
+up next.
+
 ## Status
 
 See the 20 project tasks tracked for this build for current progress
@@ -260,3 +275,9 @@ papered over with placeholders:
   filled specifications; implementation follows established industry
   practice for those areas rather than a documented Deal Hunter AI–specific
   requirement.
+- **`mobile/`** was written without a Flutter/Dart SDK available in this
+  sandbox — every API call was checked against current package
+  documentation, but none of it has run through `flutter pub get`/
+  `analyze`/`test` yet, and no `android/`/`ios/` platform folders exist
+  (needs `flutter create .` first). See `mobile/README.md`'s "Status"
+  section for exact verification steps before building further on it.
