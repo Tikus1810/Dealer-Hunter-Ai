@@ -99,9 +99,7 @@ class SqlAlchemySearchProfileRepository:
     async def update(self, profile: SearchProfile) -> SearchProfile:
         row = await self._session.get(SearchProfileModel, profile.id)
         if row is None:
-            raise NotFoundError(
-                "search profile not found", details={"profile_id": str(profile.id)}
-            )
+            raise NotFoundError("search profile not found", details={"profile_id": str(profile.id)})
         category_id = await self._category_id_for(profile.category) if profile.category else None
         row.name = profile.name
         row.category_id = category_id

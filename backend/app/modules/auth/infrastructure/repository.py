@@ -19,9 +19,7 @@ class SqlAlchemyRefreshTokenRepository:
         self._session = session
 
     async def store(self, *, user_id: uuid.UUID, jti: str, expires_at: datetime) -> None:
-        self._session.add(
-            RefreshTokenModel(user_id=user_id, token_jti=jti, expires_at=expires_at)
-        )
+        self._session.add(RefreshTokenModel(user_id=user_id, token_jti=jti, expires_at=expires_at))
         await self._session.flush()
 
     async def is_valid(self, jti: str) -> bool:

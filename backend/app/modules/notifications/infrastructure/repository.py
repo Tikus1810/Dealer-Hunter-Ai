@@ -71,9 +71,7 @@ class SqlAlchemyNotificationRepository:
         return [_to_entity(row) for row in rows]
 
     async def count_for_user(self, user_id: uuid.UUID) -> int:
-        stmt = select(func.count(NotificationModel.id)).where(
-            NotificationModel.user_id == user_id
-        )
+        stmt = select(func.count(NotificationModel.id)).where(NotificationModel.user_id == user_id)
         return (await self._session.execute(stmt)).scalar_one()
 
     async def mark_read(self, notification_id: uuid.UUID) -> None:

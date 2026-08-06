@@ -166,9 +166,7 @@ class SpecificationAnalyzer:
             score -= 5.0
             confidence -= 0.1
             factors.append(
-                ExplanationFactor(
-                    "thin_description", -5.0, "Description is very short or missing."
-                )
+                ExplanationFactor("thin_description", -5.0, "Description is very short or missing.")
             )
 
         return AnalyzerOutput(score, max(0.0, confidence), factors)

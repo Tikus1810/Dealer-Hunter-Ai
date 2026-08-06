@@ -30,6 +30,10 @@ exclude = ["alembic/"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+# Explicit per pytest-asyncio's own deprecation warning (silent default was
+# "function" already, in practice, but a future release changes what an
+# unset value means — pin it rather than depend on that not landing under us).
+asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
 addopts = "--cov=app --cov-report=term-missing"
 markers = ["integration: requires a live PostgreSQL database (see tests/integration/conftest.py)"]

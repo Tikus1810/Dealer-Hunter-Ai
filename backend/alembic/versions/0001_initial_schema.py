@@ -63,9 +63,7 @@ def upgrade() -> None:
             "updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
         ),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint(
-            "source", "source_seller_id", name="uq_seller_scores_source_seller"
-        ),
+        sa.UniqueConstraint("source", "source_seller_id", name="uq_seller_scores_source_seller"),
     )
 
     op.create_table(
@@ -138,9 +136,7 @@ def upgrade() -> None:
             "updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
         ),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint(
-            "brand", "model", "variant", name="uq_products_brand_model_variant"
-        ),
+        sa.UniqueConstraint("brand", "model", "variant", name="uq_products_brand_model_variant"),
         sa.ForeignKeyConstraint(["category_id"], ["categories.id"], ondelete="RESTRICT"),
     )
 
@@ -212,14 +208,10 @@ def upgrade() -> None:
         ),
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint(
-            "source", "source_listing_id", name="uq_offers_source_listing"
-        ),
+        sa.UniqueConstraint("source", "source_listing_id", name="uq_offers_source_listing"),
         sa.ForeignKeyConstraint(["category_id"], ["categories.id"], ondelete="RESTRICT"),
         sa.ForeignKeyConstraint(["product_id"], ["products.id"], ondelete="SET NULL"),
-        sa.ForeignKeyConstraint(
-            ["seller_score_id"], ["seller_scores.id"], ondelete="SET NULL"
-        ),
+        sa.ForeignKeyConstraint(["seller_score_id"], ["seller_scores.id"], ondelete="SET NULL"),
     )
 
     op.create_table(

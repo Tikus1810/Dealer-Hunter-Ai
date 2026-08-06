@@ -96,9 +96,7 @@ async def test_list_notifications_empty_for_new_user(client: AsyncClient) -> Non
 
 async def test_mark_unknown_notification_read_is_404(client: AsyncClient) -> None:
     headers = await _auth_headers(client, email="notif-404@example.com")
-    response = await client.post(
-        f"/api/v1/notifications/{uuid.uuid4()}/read", headers=headers
-    )
+    response = await client.post(f"/api/v1/notifications/{uuid.uuid4()}/read", headers=headers)
     assert response.status_code == 404
     assert response.json()["code"] == "not_found"
 

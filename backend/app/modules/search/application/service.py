@@ -66,9 +66,7 @@ class SearchService:
     async def get_profile(self, user_id: uuid.UUID, profile_id: uuid.UUID) -> SearchProfile:
         profile = await self._profiles.get_by_id(profile_id)
         if profile is None or profile.user_id != user_id:
-            raise NotFoundError(
-                "search profile not found", details={"profile_id": str(profile_id)}
-            )
+            raise NotFoundError("search profile not found", details={"profile_id": str(profile_id)})
         return profile
 
     async def update_profile(

@@ -222,9 +222,7 @@ async def test_mark_read_updates_the_notification() -> None:
     user_id = uuid.uuid4()
     repo = FakeNotificationRepository()
     service = NotificationService(repo, FakeDeviceTokenRepository(), FakePreferenceRepository())
-    created = await service.notify_user(
-        user_id, event=NotificationEvent.DEAL_SCORE_READY, data={}
-    )
+    created = await service.notify_user(user_id, event=NotificationEvent.DEAL_SCORE_READY, data={})
 
     await service.mark_read(user_id, created[0].id)
 

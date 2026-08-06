@@ -84,9 +84,7 @@ def _preference_to_response(preference: NotificationPreference) -> NotificationP
     )
 
 
-@router.post(
-    "/devices", response_model=DeviceTokenResponse, status_code=status.HTTP_201_CREATED
-)
+@router.post("/devices", response_model=DeviceTokenResponse, status_code=status.HTTP_201_CREATED)
 async def register_device(
     body: RegisterDeviceRequest,
     user_id: uuid.UUID = Depends(get_current_user_id),
@@ -112,9 +110,7 @@ async def list_notifications(
     user_id: uuid.UUID = Depends(get_current_user_id),
     service: NotificationService = Depends(get_notification_service),
 ) -> NotificationListResponse:
-    notifications, total = await service.list_notifications(
-        user_id, page=page, page_size=page_size
-    )
+    notifications, total = await service.list_notifications(user_id, page=page, page_size=page_size)
     return NotificationListResponse(
         items=[_notification_to_response(n) for n in notifications],
         total=total,
@@ -123,9 +119,7 @@ async def list_notifications(
     )
 
 
-@router.post(
-    "/{notification_id}/read", status_code=status.HTTP_204_NO_CONTENT, response_model=None
-)
+@router.post("/{notification_id}/read", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
 async def mark_notification_read(
     notification_id: uuid.UUID,
     user_id: uuid.UUID = Depends(get_current_user_id),

@@ -1,0 +1,32 @@
+# Fast, local-first quality gates (Band 12: Testing_QA). Deliberately
+# excludes mypy and pytest here — both need the backend's venv activated
+# and are slow enough that CI (.github/workflows/ci.yml) is the right
+# place to run them exhaustively; pre-commit should stay fast enough that
+# nobody is tempted to skip it.
+#
+# Setup (once per clone):
+#   pip install pre-commit
+#   pre-commit install
+
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.4 # keep in sync with backend/requirements.txt's ruff pin
+    hooks:
+      - id: ruff
+        name: ruff (lint)
+        args: [--fix]
+        files: ^backend/
+      - id: ruff-format
+        name: ruff (format)
+        files: ^backend/
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=1000]

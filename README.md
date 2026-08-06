@@ -54,13 +54,54 @@ docker compose -f infra/docker/docker-compose.yml up --build
 Health check: `GET http://localhost:8000/api/v1/health`
 API docs: `http://localhost:8000/api/docs`
 
-## Tests
+## Tests (Band 12: Testing_QA)
 
 ```bash
 cd backend
-pytest -m "not integration"   # unit tests only, no services required
-pytest                        # full suite — needs Postgres running (see docker-compose above)
+pytest -m "not integration"   # unit tests only, no services required (~86% coverage alone)
+pytest                        # full suite — needs Postgres+Redis (see docker-compose above)
 ```
+
+**Strategy:**
+
+- **Unit tests** (`tests/unit/`) — one file per module/component, run
+  against in-memory fakes for every port (repository/sender/client
+  Protocols). No DB, no network, no `@pytest.mark.integration`. This is
+  the tier that actually runs in a sandbox with no Postgres available —
+  every module's business logic (analyzers, services, controllers) is
+  fully exercised here.
+- **Integration tests** (`tests/integration/`) — real HTTP requests
+  (`httpx.AsyncClient` + `ASGITransport`) against the actual FastAPI app,
+  or direct repository tests, both against a real (ephemeral,
+  transaction-rolled-back) PostgreSQL database. Marked
+  `@pytest.mark.integration`; only these need Postgres/Redis, which is why
+  they're excluded from the fast local loop and run in CI instead
+  (`.github/workflows/ci.yml`'s `backend` job spins up both as services).
+- **Mocking external HTTP** (eBay API, eBay Kleinanzeigen, Claude Vision,
+  Firebase) uses `respx` (for `httpx`-based clients — the `anthropic` SDK
+  and eBay providers) or a small constructor-injected `send_fn`/`client`
+  seam (for SDKs that don't expose their transport directly, e.g.
+  `firebase_admin.messaging` — see `FcmNotificationSender`'s doc comment).
+  Nothing here ever hits a real third-party API.
+- **Coverage gate**: `--cov-fail-under=80` in CI, run against the full
+  suite (unit + integration). The unit-only tier alone already reaches
+  ~86% locally; the remaining infrastructure/presentation-layer code
+  (SQLAlchemy repositories, FastAPI routers) is what the integration tier
+  covers instead of duplicating with more fakes.
+- **Static analysis as a test-equivalent gate**: `ruff check`, `ruff
+  format --check`, and `mypy --strict` all run in CI and must pass — mypy
+  strict mode has caught real bugs during development (see git history),
+  not just style nits.
+- **Local pre-commit hooks** (`.pre-commit-config.yaml`, run `pip install
+  pre-commit && pre-commit install` once) catch `ruff`/formatting issues
+  before they reach CI. Deliberately excludes mypy/pytest — both need the
+  venv active and are slow enough that CI is the right place for them.
+- **Flutter** (`mobile/`): `flutter test` (unit tests against fakes, same
+  philosophy as the backend — no widget/golden tests yet, see
+  `mobile/README.md`'s "Known gaps") + `flutter analyze` in the `flutter`
+  CI job. No coverage gate yet — enforcing one before the code has ever
+  been verified against a real Flutter SDK would be premature (see
+  `mobile/README.md`'s "Status").
 
 ## Database
 

@@ -13,7 +13,7 @@ from enum import StrEnum
 from typing import Any
 
 from argon2 import PasswordHasher
-from argon2.exceptions import VerifyMismatchError
+from argon2.exceptions import InvalidHashError, VerifyMismatchError
 from jose import JWTError, jwt
 
 from app.core.config import Settings
@@ -36,10 +36,15 @@ def hash_password(plain_password: str) -> str:
 
 
 def verify_password(plain_password: str, password_hash: str) -> bool:
-    """Verify a plaintext password against an Argon2 hash. Never raises on mismatch."""
+    """Verify a plaintext password against an Argon2 hash. Never raises: a
+    wrong password (`VerifyMismatchError`) and a malformed/corrupted stored
+    hash (`InvalidHashError` — argon2-cffi raises this as a `ValueError`
+    subclass, outside `VerifyMismatchError`'s own hierarchy, so it needs its
+    own except clause) both just fail verification rather than propagating
+    as an unhandled 500."""
     try:
         return _password_hasher.verify(password_hash, plain_password)
-    except VerifyMismatchError:
+    except (VerifyMismatchError, InvalidHashError):
         return False
 
 

@@ -84,6 +84,14 @@ class FcmNotificationSender:
     async def send_push(
         self, *, device_token: str, title: str, body: str, data: dict[str, Any]
     ) -> None:
+        # `token=` (not the newer `fid=`) deliberately: firebase-admin 7.x
+        # deprecated Message.token with a DeprecationWarning (visible in the
+        # test suite's warnings summary) in favor of `fid`, but this hasn't
+        # been verified against a live Firebase project yet (see the README's
+        # "known gaps" — FCM_PROJECT_ID isn't configured anywhere real), and
+        # `fid` (Firebase Installation ID) may not be a drop-in-equivalent
+        # concept for an FCM registration token. Switch once verified against
+        # a real send, not on a guess.
         message = messaging.Message(
             token=device_token,
             notification=messaging.Notification(title=title, body=body),

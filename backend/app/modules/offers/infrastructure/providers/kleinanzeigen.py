@@ -193,7 +193,7 @@ class KleinanzeigenProvider:
 
     @staticmethod
     def _parse_price(text: str) -> float:
-        """"1.234 €" -> 1234.0; "VB" / "Zu verschenken" / "" -> 0.0 (caller's
+        """ "1.234 €" -> 1234.0; "VB" / "Zu verschenken" / "" -> 0.0 (caller's
         validator rejects non-positive prices, which is correct here: a
         negotiable/free listing without a firm number is not a comparable deal)."""
         digits = "".join(ch for ch in text if ch.isdigit())

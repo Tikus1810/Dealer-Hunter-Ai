@@ -63,9 +63,7 @@ async def test_search_uses_category_default_query_when_none_given(
     respx.post(TOKEN_URL).mock(
         return_value=httpx.Response(200, json={"access_token": "tok-1", "expires_in": 7200})
     )
-    route = respx.get(SEARCH_URL).mock(
-        return_value=httpx.Response(200, json={"itemSummaries": []})
-    )
+    route = respx.get(SEARCH_URL).mock(return_value=httpx.Response(200, json={"itemSummaries": []}))
 
     await provider.search(category=OfferCategory.IPHONE)
 

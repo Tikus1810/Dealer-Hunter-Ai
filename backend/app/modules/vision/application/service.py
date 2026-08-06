@@ -63,9 +63,7 @@ class VisionAnalysisService:
                 )
                 confidence = round((quality_confidence + cosmetic.confidence) / 2, 2)
             except Exception as exc:  # noqa: BLE001 — cosmetic analysis is best-effort
-                logger.warning(
-                    "cosmetic_analysis_failed", offer_id=str(offer_id), error=str(exc)
-                )
+                logger.warning("cosmetic_analysis_failed", offer_id=str(offer_id), error=str(exc))
 
         return self._output_formatter.format(
             offer.id, len(offer.images), list(per_image), confidence, cosmetic

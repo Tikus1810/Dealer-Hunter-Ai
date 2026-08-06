@@ -53,15 +53,21 @@ jobs:
       - name: Lint (ruff)
         run: ruff check .
 
+      - name: Format check (ruff)
+        run: ruff format --check .
+
       - name: Type check (mypy)
-        run: mypy app
+        run: mypy app scripts tests
 
       - name: Run tests with coverage
-        # Coverage gate starts low because db/session.py, db/redis.py and the
-        # module infrastructure/presentation layers are still empty scaffolding
-        # (Task #3 "Datenbankschema" onward). Raised to the Band 03 target of
-        # 80%+ once those layers have real integration tests (Task #13).
-        run: pytest --cov=app --cov-report=xml --cov-fail-under=60
+        # Runs the full suite (unit + integration, Postgres/Redis services
+        # above provide what tests/integration/conftest.py needs) — the
+        # infrastructure/presentation layers that only integration tests can
+        # reach (repositories, routers) are what push this past the ~86% the
+        # unit-only suite gets locally. Raised from 60% to the Band 03 target
+        # of 80% in Task #13, now that those integration tests exist for
+        # every module (they didn't yet when 60% was set in Task #3).
+        run: pytest --cov=app --cov-report=xml --cov-fail-under=80
 
   flutter:
     runs-on: ubuntu-latest

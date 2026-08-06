@@ -71,9 +71,7 @@ class IngestionService:
             violations = self._validator.validate(offer)
             if violations:
                 result.rejected += 1
-                result.errors.extend(
-                    f"{offer.source_listing_id}: {v}" for v in violations
-                )
+                result.errors.extend(f"{offer.source_listing_id}: {v}" for v in violations)
                 continue
 
             await self._persist(offer)
