@@ -173,11 +173,13 @@ All resource groups from Band 10 are now mounted under `/api/v1`:
   its owner — enforced by returning `404` rather than `403` for
   someone-else's-profile, to avoid leaking existence). `SearchService.
   match_offer_against_profiles` (`app/modules/search/application/service.py`)
-  is the matching engine Task #10's notifications will call: category is an
-  exact match, keywords is a case-insensitive substring check, price bounds
-  are inclusive, and `min_deal_score` requires an already-persisted
-  DealBrain score for that offer — same "v1 heuristic, not spec-mandated"
-  honesty note as DealBrain/RepairBrain.
+  is the matching engine notifications call: category is an exact match,
+  keywords is a case-insensitive substring check, price bounds are
+  inclusive, and `min_deal_score` requires an already-persisted DealBrain
+  score for that offer — same "v1 heuristic, not spec-mandated" honesty
+  note as DealBrain/RepairBrain. Profiles with `notify_on_match=False` are
+  excluded from matches entirely.
+- **Notifications** — see the dedicated section below.
 
 **Pagination note:** offer listing was originally attempted as cursor-based
 (`id > cursor` ordered by `created_at`), but UUIDs aren't monotonic with
@@ -186,6 +188,42 @@ page-based (`OFFSET`/`LIMIT` on a stable `created_at DESC, id DESC` order)
 before this ever shipped — `OfferRepositoryProtocol.list_by_category` takes
 `page`/`page_size`, and `count_by_category` provides the total for `total`/
 `page`/`page_size` response metadata.
+
+## Notifications (Band 11)
+
+`backend/app/modules/notifications/` implements the Band 11 architecture:
+templates (`domain/templates.py`, German-only for now — this product's
+actual market), preferences (`domain/preferences.py`: opt-out model, a user
+only needs a row for what they've turned *off*), `NotificationService`
+(persists a `Notification` per enabled channel — the audit log — then
+best-effort pushes via FCM), and `FcmNotificationSender`
+(`infrastructure/fcm_provider.py`, wraps `firebase_admin.messaging.send` in
+`asyncio.to_thread` since the SDK has no native async support).
+
+**Event routing:** `SavedSearchMatchNotifier`
+(`application/match_notifier.py`) implements `OfferPersistedHookProtocol`
+(`app/modules/offers/application/interfaces.py`) — the "Trigger Analysis"
+extension point `IngestionService` always had. When wired in (see
+`AsyncIntervalScheduler`'s `on_offer_persisted` param), every newly
+persisted offer is matched against active saved searches
+(`SearchService.match_offer_against_profiles`) and each match becomes a
+notification, without the `offers` module ever importing `notifications`
+or `search` directly — the hook is a `Protocol` the composition root
+satisfies with a concrete implementation (Band 2 module-boundary rule).
+
+REST surface: `POST`/`DELETE /api/v1/notifications/devices` (register/
+unregister an FCM device token), `GET /api/v1/notifications` (paginated
+inbox), `POST /api/v1/notifications/{id}/read`, `GET`/`PUT
+/api/v1/notifications/preferences`. All user-scoped, all require auth.
+
+**Only PUSH is actually delivered in v1** — Band 11 lists EMAIL as a
+channel too, but this task's scope was FCM specifically. An EMAIL-channel
+notification is still recorded (satisfying the audit-log requirement),
+just not sent anywhere yet; that's a documented gap, not a silent one.
+
+Without `FCM_PROJECT_ID`/`FCM_CREDENTIALS_JSON_PATH` set, notifications
+still work end-to-end (persisted, listed, marked read, preferences) — push
+delivery is just skipped, same pattern as the other optional providers.
 
 ## Status
 
@@ -199,8 +237,17 @@ papered over with placeholders:
   `robots.txt` and rate limits and does **not** bypass bot detection or
   CAPTCHAs. Get legal sign-off before enabling it in production
   (`KLEINANZEIGEN_PROVIDER_ENABLED` defaults to `false`).
-- **Firebase Cloud Messaging** (notifications) requires a real Firebase
-  project + service account credentials, supplied by the project owner.
+- **`FCM_PROJECT_ID`/`FCM_CREDENTIALS_JSON_PATH`** are needed for
+  `FcmNotificationSender` to actually deliver pushes — until then,
+  notifications are still created/listed/preferenced normally, just never
+  pushed to a device. Fully tested against a fake `send_fn` seam
+  (`tests/unit/test_fcm_provider.py`) but unverified against the live FCM
+  API, same pattern as the eBay/Claude providers above. The scheduler that
+  would trigger ingestion (and therefore saved-search-match notifications)
+  in production also isn't started anywhere yet — `AsyncIntervalScheduler`
+  exists and is tested, but nothing calls `.start()` from `app/main.py`,
+  same as before this task (real provider/job configuration is a
+  Task #14/Deployment concern, not a Task #10 one).
 - **eBay developer credentials** are needed for `EbayApiProvider` to hit
   real endpoints — until then it's fully tested against mocked HTTP
   responses (`tests/unit/test_ebay_api_provider.py`) but unverified against

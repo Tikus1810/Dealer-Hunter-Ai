@@ -20,6 +20,7 @@ from app.core.config import get_settings
 from app.core.exceptions import DomainError, ErrorResponse
 from app.core.logging import configure_logging, get_logger
 from app.modules.auth.presentation.router import router as auth_router
+from app.modules.notifications.presentation.router import router as notifications_router
 from app.modules.offers.presentation.router import favorites_router, offers_router
 from app.modules.repair.presentation.router import router as repair_router
 from app.modules.scoring.presentation.router import router as scoring_router
@@ -89,11 +90,7 @@ def create_app() -> FastAPI:
 
 
 def _mount_routers(app: FastAPI) -> None:
-    """Mount each module's presentation router under /api/v1.
-
-    Modules register their router here as soon as their presentation layer
-    exists (notifications lands in Task #10).
-    """
+    """Mount each module's presentation router under /api/v1."""
     app.include_router(auth_router)
     app.include_router(users_router)
     app.include_router(offers_router)
@@ -102,6 +99,7 @@ def _mount_routers(app: FastAPI) -> None:
     app.include_router(vision_router)
     app.include_router(search_router)
     app.include_router(favorites_router)
+    app.include_router(notifications_router)
 
 
 app = create_app()

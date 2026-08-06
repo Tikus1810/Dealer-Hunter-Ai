@@ -9,7 +9,11 @@ from __future__ import annotations
 
 from app.modules.analytics.infrastructure.models import AnalyticsEventModel
 from app.modules.auth.infrastructure.models import RefreshTokenModel
-from app.modules.notifications.infrastructure.models import NotificationModel
+from app.modules.notifications.infrastructure.models import (
+    DeviceTokenModel,
+    NotificationModel,
+    NotificationPreferenceModel,
+)
 from app.modules.offers.infrastructure.models import (
     CategoryModel,
     FavoriteModel,
@@ -27,8 +31,10 @@ __all__ = [
     "AnalyticsEventModel",
     "CategoryModel",
     "DealScoreModel",
+    "DeviceTokenModel",
     "FavoriteModel",
     "NotificationModel",
+    "NotificationPreferenceModel",
     "OfferModel",
     "PriceHistoryModel",
     "ProductModel",

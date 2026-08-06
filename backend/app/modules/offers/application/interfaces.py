@@ -103,6 +103,19 @@ class MarketplaceProviderProtocol(Protocol):
     ) -> list[RawListing]: ...
 
 
+class OfferPersistedHookProtocol(Protocol):
+    """Called after `IngestionService` persists an offer (Band 07's "Trigger
+    Analysis" pipeline step). Deliberately generic (not "notify" or "score")
+    so the offers module never depends on scoring/search/notifications
+    directly — the composition root wires a concrete implementation in
+    (see `app.modules.notifications.application.match_notifier`). Must never
+    raise: one hook failure must not roll back the offer that already
+    persisted successfully — implementations are responsible for catching
+    their own errors."""
+
+    async def __call__(self, offer: Offer) -> None: ...
+
+
 class SearchSchedulerProtocol(Protocol):
     """Runs the ingestion pipeline periodically for a set of configured
     (provider, category, query) jobs (Band 02: SearchScheduler,

@@ -17,6 +17,7 @@ from app.core.logging import get_logger
 from app.modules.offers.application.interfaces import (
     MarketplaceProviderProtocol,
     OfferNormalizerProtocol,
+    OfferPersistedHookProtocol,
     OfferRepositoryProtocol,
     OfferValidatorProtocol,
 )
@@ -43,11 +44,14 @@ class IngestionService:
         normalizer: OfferNormalizerProtocol,
         validator: OfferValidatorProtocol,
         offers: OfferRepositoryProtocol,
+        *,
+        on_offer_persisted: OfferPersistedHookProtocol | None = None,
     ) -> None:
         self._provider = provider
         self._normalizer = normalizer
         self._validator = validator
         self._offers = offers
+        self._on_offer_persisted = on_offer_persisted
 
     async def ingest(
         self, *, category: OfferCategory, query: str | None = None, limit: int = 20
@@ -88,8 +92,13 @@ class IngestionService:
         return result
 
     async def _persist(self, offer: Offer) -> None:
-        await self._offers.upsert(offer)
-        # Extension point: once DealBrain (Task #6) and RepairBrain (Task #7)
-        # exist, trigger their analysis here (or publish an event they
-        # subscribe to) so every newly ingested/updated offer gets scored
-        # without the offers module depending on those modules directly.
+        persisted = await self._offers.upsert(offer)
+        if self._on_offer_persisted is not None:
+            try:
+                await self._on_offer_persisted(persisted)
+            except Exception as exc:  # noqa: BLE001 — a hook failure must not lose the offer
+                logger.error(
+                    "offer_persisted_hook_failed",
+                    offer_id=str(persisted.id),
+                    error=str(exc),
+                )

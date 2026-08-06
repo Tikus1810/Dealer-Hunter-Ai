@@ -161,3 +161,48 @@ async def test_ingest_respects_limit_via_provider(limit: int) -> None:
     result = await service.ingest(category=OfferCategory.MACBOOK, limit=limit)
 
     assert result.fetched == limit
+
+
+async def test_ingest_calls_on_offer_persisted_hook_for_each_persisted_offer() -> None:
+    provider = FakeProvider([_raw("1"), _raw("2")])
+    repo = FakeOfferRepository()
+    persisted_offers: list[Offer] = []
+
+    async def hook(offer: Offer) -> None:
+        persisted_offers.append(offer)
+
+    service = IngestionService(
+        provider,
+        FailingNormalizerOnce("__none__"),
+        AcceptEverythingValidator(),
+        repo,
+        on_offer_persisted=hook,
+    )
+
+    result = await service.ingest(category=OfferCategory.MACBOOK)
+
+    assert result.persisted == 2
+    assert len(persisted_offers) == 2
+    assert {o.source_listing_id for o in persisted_offers} == {"1", "2"}
+
+
+async def test_ingest_survives_a_failing_hook() -> None:
+    provider = FakeProvider([_raw("1")])
+    repo = FakeOfferRepository()
+
+    async def failing_hook(offer: Offer) -> None:
+        raise RuntimeError("boom")
+
+    service = IngestionService(
+        provider,
+        FailingNormalizerOnce("__none__"),
+        AcceptEverythingValidator(),
+        repo,
+        on_offer_persisted=failing_hook,
+    )
+
+    # Must not raise — a hook failure must not lose the already-persisted offer.
+    result = await service.ingest(category=OfferCategory.MACBOOK)
+
+    assert result.persisted == 1
+    assert len(repo.persisted) == 1

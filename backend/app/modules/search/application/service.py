@@ -6,8 +6,11 @@ formula — same honesty note as DealBrain/RepairBrain: category is an exact
 match, keywords is a case-insensitive substring check against title+
 description, price bounds are inclusive, and `min_deal_score` requires a
 persisted DealScore to already exist for the offer (no score yet => that
-profile doesn't match, rather than assuming a pass). This is what powers
-Task #10's notification triggers.
+profile doesn't match, rather than assuming a pass). Profiles with
+`notify_on_match=False` are excluded entirely — a user can keep a saved
+search around without getting pushes for it. This is what powers Task #10's
+notification triggers (see `app.modules.notifications.application.
+match_notifier.SavedSearchMatchNotifier`).
 """
 
 from __future__ import annotations
@@ -116,6 +119,8 @@ class SearchService:
         deal_score_value: int | None = None
 
         for profile in profiles:
+            if not profile.notify_on_match:
+                continue
             if profile.category != offer.category.value:
                 continue
             if profile.keywords and not self._keywords_match(

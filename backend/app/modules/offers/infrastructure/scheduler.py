@@ -19,6 +19,7 @@ from app.modules.offers.application.ingestion import IngestionService
 from app.modules.offers.application.interfaces import (
     MarketplaceProviderProtocol,
     OfferNormalizerProtocol,
+    OfferPersistedHookProtocol,
     OfferValidatorProtocol,
 )
 from app.modules.offers.domain.entities import OfferCategory
@@ -48,12 +49,14 @@ class AsyncIntervalScheduler:
         normalizer: OfferNormalizerProtocol,
         validator: OfferValidatorProtocol,
         interval_seconds: float = 900.0,
+        on_offer_persisted: OfferPersistedHookProtocol | None = None,
     ) -> None:
         self._jobs = jobs
         self._session_factory = session_factory
         self._normalizer = normalizer
         self._validator = validator
         self._interval = interval_seconds
+        self._on_offer_persisted = on_offer_persisted
         self._task: asyncio.Task[None] | None = None
         self._stopped = asyncio.Event()
 
@@ -63,7 +66,11 @@ class AsyncIntervalScheduler:
                 try:
                     repo = SqlAlchemyOfferRepository(session)
                     service = IngestionService(
-                        job.provider, self._normalizer, self._validator, repo
+                        job.provider,
+                        self._normalizer,
+                        self._validator,
+                        repo,
+                        on_offer_persisted=self._on_offer_persisted,
                     )
                     result = await service.ingest(
                         category=job.category, query=job.query, limit=job.limit
