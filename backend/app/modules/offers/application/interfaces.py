@@ -8,7 +8,7 @@ from __future__ import annotations
 import uuid
 from typing import Protocol
 
-from app.modules.offers.domain.entities import Offer, OfferCategory, RawListing
+from app.modules.offers.domain.entities import Favorite, Offer, OfferCategory, RawListing
 
 
 class OfferRepositoryProtocol(Protocol):
@@ -19,14 +19,46 @@ class OfferRepositoryProtocol(Protocol):
     async def upsert(self, offer: Offer) -> Offer: ...
 
     async def list_by_category(
-        self, category: str, *, limit: int = 20, cursor: str | None = None
+        self, category: str, *, page: int = 1, page_size: int = 20
     ) -> list[Offer]: ...
+
+    async def count_by_category(self, category: str) -> int: ...
 
 
 class OfferServiceProtocol(Protocol):
     async def get_offer(self, offer_id: uuid.UUID) -> Offer: ...
 
-    async def search_offers(self, *, category: str, query: str | None = None) -> list[Offer]: ...
+    async def list_offers(
+        self, *, category: str, page: int = 1, page_size: int = 20
+    ) -> tuple[list[Offer], int]:
+        """Returns (page of offers, total count matching the category)."""
+        ...
+
+
+class FavoriteRepositoryProtocol(Protocol):
+    async def add(self, favorite: Favorite) -> Favorite: ...
+
+    async def remove(self, user_id: uuid.UUID, offer_id: uuid.UUID) -> None: ...
+
+    async def exists(self, user_id: uuid.UUID, offer_id: uuid.UUID) -> bool: ...
+
+    async def list_for_user(
+        self, user_id: uuid.UUID, *, page: int = 1, page_size: int = 20
+    ) -> list[Favorite]: ...
+
+    async def count_for_user(self, user_id: uuid.UUID) -> int: ...
+
+
+class FavoriteServiceProtocol(Protocol):
+    async def add_favorite(self, user_id: uuid.UUID, offer_id: uuid.UUID) -> Favorite: ...
+
+    async def remove_favorite(self, user_id: uuid.UUID, offer_id: uuid.UUID) -> None: ...
+
+    async def list_favorites(
+        self, user_id: uuid.UUID, *, page: int = 1, page_size: int = 20
+    ) -> tuple[list[Favorite], int]:
+        """Returns (page of favorites, total count for this user)."""
+        ...
 
 
 class SearchProviderProtocol(Protocol):

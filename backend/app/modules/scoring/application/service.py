@@ -60,7 +60,7 @@ class DealBrainService:
             raise NotFoundError("offer not found", details={"offer_id": str(offer_id)})
 
         comparables = await self._offers.list_by_category(
-            offer.category.value, limit=_COMPARABLES_LIMIT
+            offer.category.value, page=1, page_size=_COMPARABLES_LIMIT
         )
         comparable_prices = [o.price_amount for o in comparables if o.id != offer.id]
 

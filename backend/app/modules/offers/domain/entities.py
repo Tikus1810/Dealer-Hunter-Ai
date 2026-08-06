@@ -43,6 +43,16 @@ class Offer:
 
 
 @dataclass(frozen=True, slots=True)
+class Favorite:
+    """A user's saved offer (Band 10: Favorites resource group)."""
+
+    id: uuid.UUID
+    user_id: uuid.UUID
+    offer_id: uuid.UUID
+    created_at: datetime | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class RawListing:
     """Provider-native listing data before normalization (Band 07 pipeline step 1-2:
     Provider -> Fetch). `payload` shape depends entirely on `source` — the

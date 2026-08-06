@@ -156,6 +156,37 @@ downgrade for cost without an explicit decision); override
 `ANTHROPIC_VISION_MODEL` for cheaper/faster triage at lower accuracy if
 you're running this at high volume.
 
+## REST API (Band 10)
+
+All resource groups from Band 10 are now mounted under `/api/v1`:
+
+- **Offers** — `GET /api/v1/offers?category=&page=&page_size=` (paginated
+  list, `page`/`page_size` are page-based per Band 10's "cursor OR
+  page-based" allowance — cursor-based was tried first and reverted, see
+  the note below) and `GET /api/v1/offers/{offer_id}` (detail). Read-only,
+  unauthenticated, same as DealBrain/RepairBrain/Vision.
+- **Favorites** — `POST` / `DELETE /api/v1/offers/{offer_id}/favorite` and
+  `GET /api/v1/favorites?page=&page_size=`. Requires auth; adding a
+  duplicate favorite is `409 Conflict`, favoriting an unknown offer is `404`.
+- **Search Profiles** — full CRUD under `/api/v1/search-profiles`, all
+  user-scoped (a profile is invisible to, and unmodifiable by, anyone but
+  its owner — enforced by returning `404` rather than `403` for
+  someone-else's-profile, to avoid leaking existence). `SearchService.
+  match_offer_against_profiles` (`app/modules/search/application/service.py`)
+  is the matching engine Task #10's notifications will call: category is an
+  exact match, keywords is a case-insensitive substring check, price bounds
+  are inclusive, and `min_deal_score` requires an already-persisted
+  DealBrain score for that offer — same "v1 heuristic, not spec-mandated"
+  honesty note as DealBrain/RepairBrain.
+
+**Pagination note:** offer listing was originally attempted as cursor-based
+(`id > cursor` ordered by `created_at`), but UUIDs aren't monotonic with
+insertion order, so that cursor silently skipped/repeated rows. Switched to
+page-based (`OFFSET`/`LIMIT` on a stable `created_at DESC, id DESC` order)
+before this ever shipped — `OfferRepositoryProtocol.list_by_category` takes
+`page`/`page_size`, and `count_by_category` provides the total for `total`/
+`page`/`page_size` response metadata.
+
 ## Status
 
 See the 20 project tasks tracked for this build for current progress

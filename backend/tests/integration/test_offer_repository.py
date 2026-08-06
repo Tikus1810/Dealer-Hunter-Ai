@@ -65,3 +65,21 @@ async def test_list_by_category_returns_only_matching_active_offers(
 async def test_get_by_id_returns_none_when_missing(db_session: AsyncSession) -> None:
     repo = SqlAlchemyOfferRepository(db_session)
     assert await repo.get_by_id(uuid.uuid4()) is None
+
+
+async def test_list_by_category_paginates_without_gaps_or_duplicates(
+    db_session: AsyncSession, seeded_category: CategoryModel
+) -> None:
+    repo = SqlAlchemyOfferRepository(db_session)
+    for i in range(5):
+        await repo.upsert(_make_offer(source_listing_id=f"listing-{i}"))
+
+    assert await repo.count_by_category("macbook") == 5
+
+    page1 = await repo.list_by_category("macbook", page=1, page_size=2)
+    page2 = await repo.list_by_category("macbook", page=2, page_size=2)
+    page3 = await repo.list_by_category("macbook", page=3, page_size=2)
+
+    assert [len(page1), len(page2), len(page3)] == [2, 2, 1]
+    seen_ids = {o.id for o in page1} | {o.id for o in page2} | {o.id for o in page3}
+    assert len(seen_ids) == 5  # every offer appears exactly once across pages

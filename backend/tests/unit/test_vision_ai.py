@@ -194,8 +194,11 @@ class FakeOfferRepository:
         raise NotImplementedError
 
     async def list_by_category(
-        self, category: str, *, limit: int = 20, cursor: str | None = None
+        self, category: str, *, page: int = 1, page_size: int = 20
     ) -> list[Offer]:
+        raise NotImplementedError
+
+    async def count_by_category(self, category: str) -> int:
         raise NotImplementedError
 
 

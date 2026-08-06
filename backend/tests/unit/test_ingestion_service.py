@@ -71,9 +71,14 @@ class FakeOfferRepository:
         return offer
 
     async def list_by_category(
-        self, category: str, *, limit: int = 20, cursor: str | None = None
+        self, category: str, *, page: int = 1, page_size: int = 20
     ) -> list[Offer]:
-        return [o for o in self.persisted if o.category.value == category][:limit]
+        matching = [o for o in self.persisted if o.category.value == category]
+        offset = max(page - 1, 0) * page_size
+        return matching[offset : offset + page_size]
+
+    async def count_by_category(self, category: str) -> int:
+        return len([o for o in self.persisted if o.category.value == category])
 
 
 def _raw(listing_id: str, title: str = "A valid MacBook listing") -> RawListing:

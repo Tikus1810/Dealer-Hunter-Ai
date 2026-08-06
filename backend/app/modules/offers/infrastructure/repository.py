@@ -11,7 +11,7 @@ from __future__ import annotations
 import uuid
 from decimal import Decimal
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundError
@@ -112,17 +112,28 @@ class SqlAlchemyOfferRepository:
         return _to_entity(row, offer.category.value)
 
     async def list_by_category(
-        self, category: str, *, limit: int = 20, cursor: str | None = None
+        self, category: str, *, page: int = 1, page_size: int = 20
     ) -> list[Offer]:
+        # Page-based, not cursor-based (Band 10 allows either): ordering by
+        # created_at with an id-based cursor would silently skip/repeat rows,
+        # since UUIDs aren't monotonic with insertion order. OFFSET/LIMIT on
+        # a stable (created_at, id) order is simple and correct at MVP scale.
+        offset = max(page - 1, 0) * page_size
         stmt = (
             select(OfferModel, CategoryModel.code)
             .join(CategoryModel, OfferModel.category_id == CategoryModel.id)
             .where(CategoryModel.code == category, OfferModel.deleted_at.is_(None))
-            .order_by(OfferModel.created_at.desc())
-            .limit(limit)
+            .order_by(OfferModel.created_at.desc(), OfferModel.id.desc())
+            .limit(page_size)
+            .offset(offset)
         )
-        if cursor:
-            stmt = stmt.where(OfferModel.id > uuid.UUID(cursor))
-
         rows = (await self._session.execute(stmt)).all()
         return [_to_entity(row, code) for row, code in rows]
+
+    async def count_by_category(self, category: str) -> int:
+        stmt = (
+            select(func.count(OfferModel.id))
+            .join(CategoryModel, OfferModel.category_id == CategoryModel.id)
+            .where(CategoryModel.code == category, OfferModel.deleted_at.is_(None))
+        )
+        return (await self._session.execute(stmt)).scalar_one()

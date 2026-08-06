@@ -9,8 +9,9 @@ normalized into their own table).
 from __future__ import annotations
 
 import uuid
+from decimal import Decimal
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundError
@@ -66,6 +67,16 @@ class SqlAlchemySearchProfileRepository:
         rows = (await self._session.execute(stmt)).all()
         return [_to_entity(row, code) for row, code in rows]
 
+    async def list_for_user(self, user_id: uuid.UUID) -> list[SearchProfile]:
+        stmt = (
+            select(SearchProfileModel, CategoryModel.code)
+            .outerjoin(CategoryModel, SearchProfileModel.category_id == CategoryModel.id)
+            .where(SearchProfileModel.user_id == user_id)
+            .order_by(SearchProfileModel.created_at.desc())
+        )
+        rows = (await self._session.execute(stmt)).all()
+        return [_to_entity(row, code) for row, code in rows]
+
     async def create(self, profile: SearchProfile) -> SearchProfile:
         category_id = await self._category_id_for(profile.category) if profile.category else None
         row = SearchProfileModel(
@@ -84,3 +95,26 @@ class SqlAlchemySearchProfileRepository:
         await self._session.flush()
         await self._session.refresh(row)
         return _to_entity(row, profile.category or None)
+
+    async def update(self, profile: SearchProfile) -> SearchProfile:
+        row = await self._session.get(SearchProfileModel, profile.id)
+        if row is None:
+            raise NotFoundError(
+                "search profile not found", details={"profile_id": str(profile.id)}
+            )
+        category_id = await self._category_id_for(profile.category) if profile.category else None
+        row.name = profile.name
+        row.category_id = category_id
+        row.keywords = profile.keywords
+        row.min_price = Decimal(str(profile.min_price)) if profile.min_price is not None else None
+        row.max_price = Decimal(str(profile.max_price)) if profile.max_price is not None else None
+        row.min_deal_score = profile.min_deal_score
+        row.notify_on_match = profile.notify_on_match
+        row.is_active = profile.is_active
+        await self._session.flush()
+        await self._session.refresh(row)
+        return _to_entity(row, profile.category or None)
+
+    async def delete(self, profile_id: uuid.UUID) -> None:
+        stmt = delete(SearchProfileModel).where(SearchProfileModel.id == profile_id)
+        await self._session.execute(stmt)
