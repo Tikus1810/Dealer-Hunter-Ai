@@ -127,6 +127,22 @@ class TestOutputFormatter:
         assert result.cosmetic_condition == "not_available"
         assert result.cosmetic_condition_note
 
+    def test_cosmetic_assessment_populates_real_fields_when_provided(self) -> None:
+        from app.modules.vision.domain.entities import CosmeticAssessment
+
+        cosmetic = CosmeticAssessment(
+            condition="good",
+            confidence=0.8,
+            observed_damage=["scuff on lid"],
+            uncertain_notes=[],
+            missing_components=["charger"],
+            reasoning="Light wear visible in photos.",
+        )
+        result = OutputFormatter().format(uuid.uuid4(), 3, [], 0.5, cosmetic)
+        assert result.cosmetic_condition == "good"
+        assert result.cosmetic_condition_note == "Light wear visible in photos."
+        assert result.missing_components == ["charger"]
+
 
 class TestImagePreprocessor:
     @respx.mock
@@ -243,3 +259,76 @@ class TestVisionAnalysisService:
         assert result.image_count == 0
         assert result.confidence == 0.0
         assert result.is_image_set_incomplete is True
+
+    @respx.mock
+    async def test_analyze_uses_cosmetic_analyzer_when_configured(self) -> None:
+        from app.modules.vision.application.service import VisionAnalysisService
+        from app.modules.vision.domain.entities import CosmeticAssessment
+
+        buffer = io.BytesIO()
+        _sharp_image().save(buffer, format="PNG")
+        respx.get("https://x/1.jpg").mock(
+            return_value=httpx.Response(200, content=buffer.getvalue())
+        )
+        respx.get("https://x/2.jpg").mock(
+            return_value=httpx.Response(200, content=buffer.getvalue())
+        )
+
+        class FakeCosmeticAnalyzer:
+            def __init__(self) -> None:
+                self.called_with: list[str] | None = None
+
+            async def analyze(
+                self, image_urls: list[str], *, category_hint: str
+            ) -> CosmeticAssessment:
+                self.called_with = image_urls
+                return CosmeticAssessment(
+                    condition="good",
+                    confidence=1.0,
+                    observed_damage=[],
+                    uncertain_notes=[],
+                    missing_components=[],
+                    reasoning="Looks fine.",
+                )
+
+        cosmetic_analyzer = FakeCosmeticAnalyzer()
+        offer = _offer()
+        service = VisionAnalysisService(
+            FakeOfferRepository([offer]), cosmetic_analyzer=cosmetic_analyzer
+        )
+
+        result = await service.analyze(offer.id)
+
+        assert result.cosmetic_condition == "good"
+        assert result.cosmetic_condition_note == "Looks fine."
+        assert cosmetic_analyzer.called_with == offer.images
+
+    @respx.mock
+    async def test_analyze_falls_back_gracefully_when_cosmetic_analyzer_fails(self) -> None:
+        from app.modules.vision.application.service import VisionAnalysisService
+        from app.modules.vision.domain.entities import CosmeticAssessment
+
+        buffer = io.BytesIO()
+        _sharp_image().save(buffer, format="PNG")
+        respx.get("https://x/1.jpg").mock(
+            return_value=httpx.Response(200, content=buffer.getvalue())
+        )
+        respx.get("https://x/2.jpg").mock(
+            return_value=httpx.Response(200, content=buffer.getvalue())
+        )
+
+        class FailingCosmeticAnalyzer:
+            async def analyze(
+                self, image_urls: list[str], *, category_hint: str
+            ) -> CosmeticAssessment:
+                raise RuntimeError("boom")
+
+        offer = _offer()
+        service = VisionAnalysisService(
+            FakeOfferRepository([offer]), cosmetic_analyzer=FailingCosmeticAnalyzer()
+        )
+
+        result = await service.analyze(offer.id)
+
+        assert result.cosmetic_condition == "not_available"
+        assert result.confidence > 0.0  # quality confidence still computed

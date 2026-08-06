@@ -60,6 +60,11 @@ class Settings(BaseSettings):
     fcm_project_id: str = Field(default="")
     fcm_credentials_json_path: str = Field(default="")
 
+    # Claude Vision API (Band 08: cosmetic-condition detection)
+    # Optional — cosmetic_condition stays "not_available" until this is set.
+    anthropic_api_key: str = Field(default="")
+    anthropic_vision_model: str = Field(default="claude-opus-5")
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.cors_allowed_origins.split(",") if o.strip()]

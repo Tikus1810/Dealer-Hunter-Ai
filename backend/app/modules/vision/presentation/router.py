@@ -14,10 +14,15 @@ import uuid
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import Settings, get_settings
 from app.db.session import get_db_session
 from app.modules.offers.infrastructure.repository import SqlAlchemyOfferRepository
+from app.modules.vision.application.interfaces import CosmeticConditionAnalyzerProtocol
 from app.modules.vision.application.service import VisionAnalysisService
 from app.modules.vision.domain.entities import VisionObservation
+from app.modules.vision.infrastructure.claude_vision_provider import (
+    ClaudeCosmeticConditionAnalyzer,
+)
 from app.modules.vision.presentation.schemas import (
     ImageQualityObservationResponse,
     VisionObservationResponse,
@@ -26,8 +31,16 @@ from app.modules.vision.presentation.schemas import (
 router = APIRouter(prefix="/api/v1/offers", tags=["vision-ai"])
 
 
-def get_vision_service(session: AsyncSession = Depends(get_db_session)) -> VisionAnalysisService:
-    return VisionAnalysisService(offers=SqlAlchemyOfferRepository(session))
+def get_vision_service(
+    session: AsyncSession = Depends(get_db_session),
+    settings: Settings = Depends(get_settings),
+) -> VisionAnalysisService:
+    cosmetic_analyzer: CosmeticConditionAnalyzerProtocol | None = (
+        ClaudeCosmeticConditionAnalyzer(settings) if settings.anthropic_api_key else None
+    )
+    return VisionAnalysisService(
+        offers=SqlAlchemyOfferRepository(session), cosmetic_analyzer=cosmetic_analyzer
+    )
 
 
 def _to_response(observation: VisionObservation) -> VisionObservationResponse:

@@ -137,15 +137,24 @@ quality and an incomplete image set) → `OutputFormatter`.
 RepairBrain need to consume stored observations instead of calling this
 endpoint directly).
 
-**`cosmetic_condition` is always `"not_available"` in v1**, with a note
-explaining why — real damage/condition detection from photos needs an
-actual vision model (Claude vision API, or similar), which needs a
-provider decision + credentials neither of which exist yet. Rather than
-guess, the field honestly reports what wasn't determined, per Band 08's
-own requirement to "distinguish clearly between observed facts and
-uncertain inferences." Swapping in a real vision model later doesn't
-change `ObservationEngine`'s image-quality checks — it's a new observation
-source in the `OutputFormatter` step, not a rewrite of the pipeline.
+**Cosmetic-damage detection: `ClaudeCosmeticConditionAnalyzer`** (in
+`infrastructure/claude_vision_provider.py`) calls the Claude API's vision
+capability with structured outputs (`messages.parse`, a Pydantic schema) to
+classify condition, list clearly-visible damage separately from uncertain
+notes, and flag likely-missing accessories — all from the listing photos
+only, with an explicit instruction to answer "unclear" rather than guess.
+It's wired in automatically once `ANTHROPIC_API_KEY` is set in `.env`;
+without it, `cosmetic_condition` stays `"not_available"` with a note
+explaining why, exactly as before — the honesty behavior from Band 08's
+"distinguish observed facts from uncertain inferences" now covers both "we
+determined nothing" (no key configured) and "the model itself is unsure"
+(low `confidence` on a real assessment). If the Claude call fails or
+refuses, the service catches it and falls back to `"not_available"` rather
+than failing the whole request — image-quality checks always still run.
+Model defaults to `claude-opus-5` (Anthropic's own guidance: never
+downgrade for cost without an explicit decision); override
+`ANTHROPIC_VISION_MODEL` for cheaper/faster triage at lower accuracy if
+you're running this at high volume.
 
 ## Status
 
@@ -165,6 +174,10 @@ papered over with placeholders:
   real endpoints — until then it's fully tested against mocked HTTP
   responses (`tests/unit/test_ebay_api_provider.py`) but unverified against
   the live API.
+- **`ANTHROPIC_API_KEY`** is needed for `ClaudeCosmeticConditionAnalyzer` to
+  hit the real Claude Vision API — until then it's fully tested against
+  mocked HTTP responses (`tests/unit/test_claude_vision_provider.py`) but
+  unverified against the live API, same pattern as the eBay provider above.
 - Bands 11–15 and 17–20 were delivered as section skeletons rather than
   filled specifications; implementation follows established industry
   practice for those areas rather than a documented Deal Hunter AI–specific

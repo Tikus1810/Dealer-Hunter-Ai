@@ -8,7 +8,11 @@ from __future__ import annotations
 import uuid
 
 from app.modules.vision.domain.confidence import MIN_IMAGES_FOR_COMPLETE_SET
-from app.modules.vision.domain.entities import ImageQualityObservation, VisionObservation
+from app.modules.vision.domain.entities import (
+    CosmeticAssessment,
+    ImageQualityObservation,
+    VisionObservation,
+)
 
 OBSERVATION_VERSION = "1.0.0"
 _COSMETIC_CONDITION_NOTE = (
@@ -24,15 +28,25 @@ class OutputFormatter:
         image_count: int,
         per_image: list[ImageQualityObservation],
         confidence: float,
+        cosmetic: CosmeticAssessment | None = None,
     ) -> VisionObservation:
+        if cosmetic is not None:
+            cosmetic_condition = cosmetic.condition
+            cosmetic_condition_note = cosmetic.reasoning
+            missing_components = cosmetic.missing_components
+        else:
+            cosmetic_condition = "not_available"
+            cosmetic_condition_note = _COSMETIC_CONDITION_NOTE
+            missing_components = []
+
         return VisionObservation(
             offer_id=offer_id,
             image_count=image_count,
             is_image_set_incomplete=image_count < MIN_IMAGES_FOR_COMPLETE_SET,
             per_image=per_image,
-            cosmetic_condition="not_available",
-            cosmetic_condition_note=_COSMETIC_CONDITION_NOTE,
-            missing_components=[],
+            cosmetic_condition=cosmetic_condition,
+            cosmetic_condition_note=cosmetic_condition_note,
+            missing_components=missing_components,
             confidence=confidence,
             observation_version=OBSERVATION_VERSION,
         )
