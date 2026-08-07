@@ -66,3 +66,10 @@ class SqlAlchemyUserRepository:
         await self._session.flush()
         await self._session.refresh(row)
         return _to_entity(row)
+
+    async def update_password_hash(self, user_id: uuid.UUID, *, password_hash: str) -> None:
+        row = await self._session.get(UserModel, user_id)
+        if row is None:
+            raise ValueError(f"user {user_id} not found")
+        row.password_hash = password_hash
+        await self._session.flush()

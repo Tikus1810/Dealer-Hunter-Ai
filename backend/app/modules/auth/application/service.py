@@ -13,18 +13,22 @@ from datetime import UTC, datetime
 
 from app.core.config import Settings
 from app.core.exceptions import ConflictError, ForbiddenError, UnauthorizedError
+from app.core.logging import get_logger
 from app.core.security import (
     InvalidTokenError,
     TokenType,
     create_token,
     decode_token,
     hash_password,
+    needs_rehash,
     verify_password,
 )
 from app.modules.auth.application.interfaces import RefreshTokenRepositoryProtocol
 from app.modules.auth.domain.entities import TokenPair
 from app.modules.users.application.interfaces import UserRepositoryProtocol
 from app.modules.users.domain.entities import User
+
+logger = get_logger(__name__)
 
 
 class AuthService:
@@ -54,6 +58,20 @@ class AuthService:
             raise UnauthorizedError("invalid email or password")
         if not user.is_active:
             raise ForbiddenError("this account has been deactivated")
+
+        # Opportunistic rehash (Band 14: Security-Härtung — OWASP ASVS
+        # 2.4.x credential storage hygiene): a hash created under older
+        # Argon2 parameters gets upgraded transparently on the next
+        # successful login, using the plaintext password this call already
+        # has and is about to discard. Best-effort — a failure here must
+        # never block a successful login the user is otherwise entitled to.
+        if needs_rehash(user.password_hash):
+            try:
+                await self._users.update_password_hash(
+                    user.id, password_hash=hash_password(password)
+                )
+            except Exception as exc:  # noqa: BLE001 — never fail login over this
+                logger.error("password_rehash_failed", user_id=str(user.id), error=str(exc))
 
         return await self._issue_token_pair(user.id)
 

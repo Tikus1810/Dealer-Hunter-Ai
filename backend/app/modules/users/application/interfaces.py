@@ -17,6 +17,15 @@ class UserRepositoryProtocol(Protocol):
 
     async def update(self, user: User) -> User: ...
 
+    async def update_password_hash(self, user_id: uuid.UUID, *, password_hash: str) -> None:
+        """Separate from `update()` deliberately (Band 14: Security-Härtung)
+        — `update()` is for profile fields (see `UserServiceProtocol.
+        update_profile`); mixing credential changes into that generic path
+        risks a future caller overwriting `password_hash` with a stale
+        value from a `User` they only meant to update the display name on.
+        """
+        ...
+
 
 class UserServiceProtocol(Protocol):
     async def get_profile(self, user_id: uuid.UUID) -> User: ...

@@ -7,6 +7,7 @@ from datetime import datetime
 
 import pytest
 
+import app.modules.auth.application.service as auth_service_module
 from app.core.config import Settings
 from app.core.exceptions import ConflictError, ForbiddenError, UnauthorizedError
 from app.core.security import hash_password
@@ -33,6 +34,9 @@ class FakeUserRepository:
     async def update(self, user: User) -> User:
         self.by_id[user.id] = user
         return user
+
+    async def update_password_hash(self, user_id: uuid.UUID, *, password_hash: str) -> None:
+        self.by_id[user_id].password_hash = password_hash
 
 
 class FakeRefreshTokenRepository:
@@ -140,3 +144,52 @@ async def test_logout_is_idempotent_for_already_invalid_token() -> None:
 def test_hash_password_used_for_stored_credentials() -> None:
     # sanity check that the fixtures above exercise a real Argon2 hash, not a stub
     assert hash_password("x") != "x"
+
+
+async def test_login_rehashes_password_when_current_hash_is_flagged_outdated(
+    service: ServiceFixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    auth, users, _tokens = service
+    user_id = await auth.register(email="f@example.com", password="correcthorse")
+    original_hash = users.by_id[user_id].password_hash
+
+    # A real "outdated Argon2 parameters" hash can't be produced without a
+    # second PasswordHasher config — monkeypatch the check itself instead,
+    # same as this codebase's other tests that need a specific answer from
+    # a pure function rather than reconstructing the conditions for it.
+    monkeypatch.setattr(auth_service_module, "needs_rehash", lambda _hash: True)
+
+    await auth.login(email="f@example.com", password="correcthorse")
+
+    assert users.by_id[user_id].password_hash != original_hash
+
+
+async def test_login_does_not_rehash_when_current_hash_is_up_to_date(
+    service: ServiceFixture,
+) -> None:
+    auth, users, _tokens = service
+    user_id = await auth.register(email="g@example.com", password="correcthorse")
+    original_hash = users.by_id[user_id].password_hash
+
+    await auth.login(email="g@example.com", password="correcthorse")
+
+    assert users.by_id[user_id].password_hash == original_hash
+
+
+async def test_login_succeeds_even_if_rehash_persistence_fails(
+    service: ServiceFixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    auth, users, _tokens = service
+    await auth.register(email="h@example.com", password="correcthorse")
+
+    monkeypatch.setattr(auth_service_module, "needs_rehash", lambda _hash: True)
+
+    async def failing_update(user_id: uuid.UUID, *, password_hash: str) -> None:
+        raise RuntimeError("db is down")
+
+    monkeypatch.setattr(users, "update_password_hash", failing_update)
+
+    # Must not raise — a rehash failure must never block a login the user
+    # is otherwise entitled to.
+    pair = await auth.login(email="h@example.com", password="correcthorse")
+    assert pair.access_token

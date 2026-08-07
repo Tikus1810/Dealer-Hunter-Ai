@@ -59,6 +59,40 @@ jobs:
       - name: Type check (mypy)
         run: mypy app scripts tests
 
+      - name: Dependency vulnerability scan (pip-audit)
+        # Band 14: Security-Härtung. Every finding here must be either
+        # fixed (a safe bump — done for python-jose/python-multipart/lxml/
+        # Pillow in Task #15, see requirements.txt and docs/security.md's
+        # changelog) or explicitly ignored below with a documented reason,
+        # never silently swallowed. Currently accepted, tracked risk (full
+        # detail in docs/security.md "Known gaps" — re-check periodically,
+        # this list is a snapshot, not a permanent exemption):
+        #   - starlette 0.41.3 (PYSEC-2026-161/248/249/1941/1942/2280/2281):
+        #     fixed versions need FastAPI >=0.116, a framework major-version
+        #     bump that deserves its own dedicated regression pass, not a
+        #     drive-by change inside a dependency-scanning task.
+        #   - pytest 8.3.4 (PYSEC-2026-1845): fixed in 9.x, which needs a
+        #     coordinated bump of pytest-asyncio (0.25 -> 1.x, confirmed
+        #     incompatible with pytest 9 as pinned) and pytest-cov together.
+        #     Dev/test-only dependency — never ships, no production exposure.
+        #   - ecdsa 0.19.2 (PYSEC-2026-1325, transitive via
+        #     python-jose[cryptography]): no fixed version exists upstream.
+        #     This app signs JWTs with HS256 (symmetric) by default —
+        #     see .env.example's JWT_ALGORITHM — so ecdsa's EC code path
+        #     is pulled in but never actually exercised.
+        run: |
+          pip install pip-audit
+          pip-audit -r requirements.txt \
+            --ignore-vuln PYSEC-2026-161 \
+            --ignore-vuln PYSEC-2026-248 \
+            --ignore-vuln PYSEC-2026-249 \
+            --ignore-vuln PYSEC-2026-1941 \
+            --ignore-vuln PYSEC-2026-1942 \
+            --ignore-vuln PYSEC-2026-2280 \
+            --ignore-vuln PYSEC-2026-2281 \
+            --ignore-vuln PYSEC-2026-1845 \
+            --ignore-vuln PYSEC-2026-1325
+
       - name: Run tests with coverage
         # Runs the full suite (unit + integration, Postgres/Redis services
         # above provide what tests/integration/conftest.py needs) — the

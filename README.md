@@ -322,6 +322,35 @@ recovery — in [docs/deployment.md](docs/deployment.md). Summary:
   `backend/requirements.txt` and GitHub Actions versions. No `pub`
   (Flutter) entry yet, deliberately — see the file's own comment.
 
+## Security (Band 14)
+
+Full writeup — auth/JWT lifecycle, rate limiting, headers, secrets,
+dependency scanning changelog — in [docs/security.md](docs/security.md).
+Summary of what's new since Task #4's auth work:
+
+- **Rate limiting**: Redis-backed fixed-window counter
+  (`app/core/rate_limit.py`) on `POST /auth/{login,register,refresh}` —
+  OWASP API4:2023. Off by default (`RATE_LIMIT_ENABLED=false`); see the
+  module's own docstring for why default-on would break the existing
+  integration suite.
+- **Security headers**: `X-Content-Type-Options`, `X-Frame-Options`,
+  `Referrer-Policy`, `Permissions-Policy`, a `Content-Security-Policy` on
+  every JSON response (exempting `/api/docs`/`/redoc`, which need their
+  own CDN assets), `Strict-Transport-Security` when `APP_ENV=production`.
+- **Opportunistic password rehashing**: `AuthService.login` upgrades a
+  password hash created under outdated Argon2 parameters transparently on
+  next login (`needs_rehash`, `UserRepositoryProtocol.
+  update_password_hash` — deliberately separate from the generic
+  `update()` to avoid ever clobbering `password_hash` with a stale value).
+- **Dependency vulnerability scanning**: `pip-audit` runs in CI on every
+  build. Fixed 4 packages with known CVEs (`python-jose`,
+  `python-multipart`, `lxml`, `Pillow`); 3 more are deliberately deferred
+  and documented (`starlette`/`pytest` need coordinated major-version
+  bumps beyond this task's scope, `ecdsa` has no upstream fix and is never
+  actually exercised by this app's HS256-only JWT usage) — see
+  docs/security.md's "Dependency vulnerability scanning" section for the
+  full reasoning per package.
+
 ## Status
 
 See the 20 project tasks tracked for this build for current progress
@@ -377,3 +406,10 @@ papered over with placeholders:
   exercised end-to-end. Push this repo to GitHub and run
   `docker compose -f infra/docker/docker-compose.yml up --build` locally
   before trusting any of it further.
+- **Security (Band 14)** rate-limit thresholds (10 logins/min, 5
+  registers/hour, 30 refreshes/min) are informed guesses, not measured
+  against real traffic — there is none yet. `starlette`/`pytest` have
+  known CVEs deliberately left unpatched (need coordinated major-version
+  bumps outside this task's scope) — see docs/security.md's "Dependency
+  vulnerability scanning" section, which also lists which packages *were*
+  bumped to close CVEs (`python-jose`, `python-multipart`, `lxml`, `Pillow`).

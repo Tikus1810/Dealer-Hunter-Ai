@@ -72,6 +72,11 @@ class Settings(BaseSettings):
     scheduler_enabled: bool = Field(default=False)
     scheduler_interval_seconds: float = Field(default=900.0)
 
+    # Rate limiting (Band 14: Security-Härtung). Off by default — see
+    # app/core/rate_limit.py's module docstring for why default-on would
+    # break the existing integration test suite.
+    rate_limit_enabled: bool = Field(default=False)
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.cors_allowed_origins.split(",") if o.strip()]

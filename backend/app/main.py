@@ -39,6 +39,13 @@ from app.modules.vision.presentation.router import router as vision_router
 
 logger = get_logger(__name__)
 
+# Swagger UI (/api/docs) and Redoc (/redoc) load their own inline
+# scripts/styles plus CDN assets to render — a strict Content-Security-
+# Policy would break them. /docs/oauth2-redirect is Swagger's own OAuth2
+# popup target, same story. Every other response from this app is pure
+# JSON (Band 14: Security-Härtung — see security_headers_middleware below).
+_CSP_EXEMPT_PATHS = frozenset({"/api/docs", "/redoc", "/docs/oauth2-redirect"})
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -109,6 +116,38 @@ def create_app() -> FastAPI:
         path_template = route.path if route is not None else request.url.path
         REQUEST_COUNT.labels(request.method, path_template, response.status_code).inc()
         REQUEST_LATENCY_SECONDS.labels(request.method, path_template).observe(duration)
+        return response
+
+    @app.middleware("http")
+    async def security_headers_middleware(
+        request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
+        """OWASP secure-headers baseline (Band 14: Security-Härtung). This
+        is a JSON API consumed by the Flutter app, not a browser-rendered
+        HTML app — these mostly harden it against a browser ever being
+        tricked into treating a response as something it isn't (content-
+        type confusion, clickjacking of the docs pages), rather than the
+        classic HTML/inline-script attack surface this service doesn't have."""
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = (
+            "geolocation=(), camera=(), microphone=(), payment=()"
+        )
+        if settings.is_production:
+            # Only meaningful behind real TLS termination — sending this
+            # over plain HTTP (true of every non-production environment
+            # here) would instruct browsers to force HTTPS for a host that
+            # might not have it yet, a self-inflicted outage waiting to
+            # happen. No environment this app actually runs in today is
+            # `production` (see docs/deployment.md "Known gaps"), so this
+            # is inert until one is.
+            response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains"
+        if request.url.path not in _CSP_EXEMPT_PATHS:
+            response.headers["Content-Security-Policy"] = (
+                "default-src 'none'; frame-ancestors 'none'"
+            )
         return response
 
     @app.exception_handler(DomainError)

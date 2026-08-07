@@ -46,3 +46,19 @@ async def test_update_persists_changes(db_session: AsyncSession) -> None:
     updated = await repo.update(created)
 
     assert updated.display_name == "Renamed"
+
+
+async def test_update_password_hash_persists_only_the_hash(db_session: AsyncSession) -> None:
+    """Band 14: the opportunistic-rehash-on-login path
+    (AuthService.login) — a separate method from update() precisely so it
+    can't accidentally also overwrite display_name/is_active/roles from a
+    stale User the caller only had for its password_hash."""
+    repo = SqlAlchemyUserRepository(db_session)
+    created = await repo.create(_make_user("rehash-me@example.com"))
+
+    await repo.update_password_hash(created.id, password_hash="new-argon2-hash")
+
+    fetched = await repo.get_by_id(created.id)
+    assert fetched is not None
+    assert fetched.password_hash == "new-argon2-hash"
+    assert fetched.display_name == created.display_name
