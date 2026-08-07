@@ -49,6 +49,10 @@ services:
     restart: always
 
   backend:
+    # GITHUB_REPOSITORY_OWNER must be lowercase — Docker registry/repository
+    # names must be, GitHub usernames aren't necessarily (cd.yml lowercases
+    # it automatically when building this same image; set it lowercase
+    # here too, e.g. "tikus1810" not "Tikus1810").
     image: ghcr.io/${GITHUB_REPOSITORY_OWNER:?GITHUB_REPOSITORY_OWNER is required}/dealhunter-backend:${IMAGE_TAG:-latest}
     environment:
       APP_ENV: production

@@ -37,7 +37,14 @@ jobs:
         id: meta
         run: |
           SHA_SHORT=$(echo "${{ github.event.workflow_run.head_sha }}" | cut -c1-12)
-          IMAGE="ghcr.io/${{ github.repository_owner }}/dealhunter-backend"
+          # Docker registry/repository names must be lowercase — GitHub
+          # usernames aren't (this repo's owner is "Tikus1810"), so
+          # ${{ github.repository_owner }} used raw broke `docker buildx`
+          # outright the first time this workflow actually pushed
+          # ("repository name must be lowercase"), never caught before
+          # since no CI run had ever gotten far enough to trigger CD.
+          OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          IMAGE="ghcr.io/$OWNER_LOWER/dealhunter-backend"
           echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
           echo "tags=$IMAGE:$SHA_SHORT,$IMAGE:latest" >> "$GITHUB_OUTPUT"
 
