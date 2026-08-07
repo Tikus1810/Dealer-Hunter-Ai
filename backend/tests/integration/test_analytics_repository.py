@@ -93,10 +93,17 @@ async def test_purge_older_than_deletes_only_events_before_the_cutoff(
 
     # Everything just created has occurred_at ~= now(); a cutoff in the
     # past should delete nothing, a cutoff in the future should delete it.
+    # `purge_older_than` is a deliberately global, unscoped operation (see
+    # its own docstring — retention deletes everything old, not one
+    # caller's slice of it), so its *count* return value isn't scoped to
+    # this test's own event either — a future cutoff matches every row any
+    # other test has committed in the same shared CI Postgres instance,
+    # not just this one. Assert on this test's own named event via
+    # count_by_name (correctly scoped) instead of the raw deleted count.
     deleted_none = await repo.purge_older_than(datetime.now(UTC) - timedelta(days=1))
     assert deleted_none == 0
     assert await repo.count_by_name(name) == 1
 
     deleted_one = await repo.purge_older_than(datetime.now(UTC) + timedelta(days=1))
-    assert deleted_one == 1
+    assert deleted_one >= 1
     assert await repo.count_by_name(name) == 0

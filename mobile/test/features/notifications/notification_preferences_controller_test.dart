@@ -2,6 +2,7 @@ import 'package:deal_hunter_ai/features/notifications/domain/notification.dart';
 import 'package:deal_hunter_ai/features/notifications/domain/notification_preference.dart';
 import 'package:deal_hunter_ai/features/notifications/domain/notifications_repository.dart';
 import 'package:deal_hunter_ai/features/notifications/presentation/notification_preferences_controller.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class _FakeNotificationsRepository implements NotificationsRepository {

@@ -10,7 +10,6 @@ import '../../../core/widgets/error_view.dart';
 import '../../../core/widgets/loading_view.dart';
 import '../../offers/presentation/offer_providers.dart';
 import '../../offers/presentation/widgets/offer_card.dart';
-import 'favorites_controller.dart';
 import 'favorites_providers.dart';
 
 /// Backed by `GET /api/v1/favorites`. Note the backend only returns

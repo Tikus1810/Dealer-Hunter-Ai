@@ -1,5 +1,6 @@
 import 'package:deal_hunter_ai/features/auth/domain/auth_repository.dart';
 import 'package:deal_hunter_ai/features/auth/presentation/auth_controller.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class _FakeAuthRepository implements AuthRepository {

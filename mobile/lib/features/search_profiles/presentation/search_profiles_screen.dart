@@ -73,12 +73,14 @@ class _SearchProfileCard extends ConsumerWidget {
       child: ListTile(
         onTap: () => showSearchProfileFormSheet(context, existing: profile),
         title: Text(profile.name),
-        subtitle: Text([
-          categoryLabel,
-          if (priceRange != null) priceRange,
-          if (profile.keywords != null && profile.keywords!.isNotEmpty)
-            '"${profile.keywords}"',
-        ].join(' · ')),
+        subtitle: Text(
+          [
+            categoryLabel,
+            if (priceRange != null) priceRange,
+            if (profile.keywords != null && profile.keywords!.isNotEmpty)
+              '"${profile.keywords}"',
+          ].join(' · '),
+        ),
         trailing: IconButton(
           icon: const Icon(Icons.delete_outline),
           tooltip: 'Löschen',

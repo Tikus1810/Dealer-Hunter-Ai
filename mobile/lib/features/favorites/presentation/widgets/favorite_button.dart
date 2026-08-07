@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/error/app_exception.dart';
-import '../favorites_controller.dart';
 import '../favorites_providers.dart';
 
 /// A heart icon button reflecting (and toggling) whether an offer is in
