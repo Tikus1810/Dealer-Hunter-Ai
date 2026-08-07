@@ -176,6 +176,47 @@ async def test_login_does_not_rehash_when_current_hash_is_up_to_date(
     assert users.by_id[user_id].password_hash == original_hash
 
 
+class FakeAnalyticsCollector:
+    def __init__(self) -> None:
+        self.tracked: list[tuple[str, uuid.UUID | None]] = []
+
+    async def track(
+        self, event_name: str, *, user_id: uuid.UUID | None, properties: dict[str, object]
+    ) -> None:
+        self.tracked.append((event_name, user_id))
+
+
+class FailingAnalyticsCollector:
+    async def track(
+        self, event_name: str, *, user_id: uuid.UUID | None, properties: dict[str, object]
+    ) -> None:
+        raise RuntimeError("analytics backend is down")
+
+
+async def test_register_tracks_a_user_registered_event(settings: Settings) -> None:
+    analytics = FakeAnalyticsCollector()
+    auth = AuthService(
+        FakeUserRepository(), FakeRefreshTokenRepository(), settings, analytics=analytics
+    )
+
+    user_id = await auth.register(email="i@example.com", password="correcthorse")
+
+    assert analytics.tracked == [("user_registered", user_id)]
+
+
+async def test_register_succeeds_even_if_analytics_tracking_fails(settings: Settings) -> None:
+    auth = AuthService(
+        FakeUserRepository(),
+        FakeRefreshTokenRepository(),
+        settings,
+        analytics=FailingAnalyticsCollector(),
+    )
+
+    # Must not raise — a tracking failure must never block registration.
+    user_id = await auth.register(email="j@example.com", password="correcthorse")
+    assert user_id is not None
+
+
 async def test_login_succeeds_even_if_rehash_persistence_fails(
     service: ServiceFixture, monkeypatch: pytest.MonkeyPatch
 ) -> None:

@@ -23,6 +23,8 @@ from app.core.security import (
     needs_rehash,
     verify_password,
 )
+from app.modules.analytics.application.interfaces import AnalyticsCollectorProtocol
+from app.modules.analytics.domain.taxonomy import AnalyticsEventName
 from app.modules.auth.application.interfaces import RefreshTokenRepositoryProtocol
 from app.modules.auth.domain.entities import TokenPair
 from app.modules.users.application.interfaces import UserRepositoryProtocol
@@ -37,10 +39,12 @@ class AuthService:
         users: UserRepositoryProtocol,
         refresh_tokens: RefreshTokenRepositoryProtocol,
         settings: Settings,
+        analytics: AnalyticsCollectorProtocol | None = None,
     ) -> None:
         self._users = users
         self._refresh_tokens = refresh_tokens
         self._settings = settings
+        self._analytics = analytics
 
     async def register(self, *, email: str, password: str) -> uuid.UUID:
         if await self._users.get_by_email(email) is not None:
@@ -48,6 +52,7 @@ class AuthService:
 
         user = User(id=uuid.uuid4(), email=email, password_hash=hash_password(password))
         created = await self._users.create(user)
+        await self._track(AnalyticsEventName.USER_REGISTERED, user_id=created.id)
         return created.id
 
     async def login(self, *, email: str, password: str) -> TokenPair:
@@ -117,3 +122,15 @@ class AuthService:
             expires_at=datetime.fromtimestamp(payload["exp"], tz=UTC),
         )
         return TokenPair(access_token=access_token, refresh_token=refresh_token)
+
+    async def _track(self, event_name: AnalyticsEventName, *, user_id: uuid.UUID) -> None:
+        """Best-effort (Band 15): analytics is an optional collaborator
+        (`analytics=None` is the default, and every existing call site
+        still works unchanged) — a tracking failure must never fail the
+        auth flow it's observing."""
+        if self._analytics is None:
+            return
+        try:
+            await self._analytics.track(event_name.value, user_id=user_id, properties={})
+        except Exception as exc:  # noqa: BLE001 — never fail the caller over this
+            logger.error("analytics_track_failed", event_name=event_name.value, error=str(exc))

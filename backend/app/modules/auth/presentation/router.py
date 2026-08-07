@@ -12,6 +12,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import Settings, get_settings
 from app.core.rate_limit import rate_limit
 from app.db.session import get_db_session
+from app.modules.analytics.application.service import AnalyticsService
+from app.modules.analytics.infrastructure.repository import SqlAlchemyAnalyticsEventRepository
 from app.modules.auth.application.service import AuthService
 from app.modules.auth.infrastructure.repository import SqlAlchemyRefreshTokenRepository
 from app.modules.auth.presentation.schemas import (
@@ -46,6 +48,7 @@ def get_auth_service(
         users=SqlAlchemyUserRepository(session),
         refresh_tokens=SqlAlchemyRefreshTokenRepository(session),
         settings=settings,
+        analytics=AnalyticsService(SqlAlchemyAnalyticsEventRepository(session)),
     )
 
 

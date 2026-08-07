@@ -351,6 +351,24 @@ Summary of what's new since Task #4's auth work:
   docs/security.md's "Dependency vulnerability scanning" section for the
   full reasoning per package.
 
+## Analytics (Band 15)
+
+Full writeup — event taxonomy, privacy, retention, KPIs — in
+[docs/analytics.md](docs/analytics.md). Summary: `backend/app/modules/analytics/`
+was a scaffold since Task #1 (entity, `AnalyticsCollectorProtocol`,
+`analytics_events` table via the initial migration); Task #16 built the
+repository, service, and REST surface (`POST/GET /api/v1/analytics/events`,
+`GET /api/v1/analytics/summary`) on top of it. Validates event names
+(lowercase snake_case) and rejects a denylist of PII-shaped property keys
+(`email`, `password`, `access_token`, ...) rather than silently stripping
+them. Two events are wired in automatically — `user_registered`
+(`AuthService.register`) and `offer_favorited`/`offer_unfavorited`
+(`FavoriteService`) — via the same optional, best-effort constructor-
+injected pattern as everywhere else in this codebase (`analytics=None` by
+default, a tracking failure never blocks the real action). Retention is a
+manual script (`scripts/purge_analytics_events.py`), not an automatic job —
+see the doc for why.
+
 ## Status
 
 See the 20 project tasks tracked for this build for current progress
@@ -413,3 +431,9 @@ papered over with placeholders:
   bumps outside this task's scope) — see docs/security.md's "Dependency
   vulnerability scanning" section, which also lists which packages *were*
   bumped to close CVEs (`python-jose`, `python-multipart`, `lxml`, `Pillow`).
+- **Analytics (Band 15)** has no BI/dashboard tool connected and no
+  automatic retention job scheduled (the purge script exists, nothing
+  calls it yet) — see docs/analytics.md's "Known gaps". Only 2 events are
+  wired in automatically (`user_registered`, `offer_favorited`/
+  `offer_unfavorited`); the rest of the taxonomy table there is documented
+  candidates, not implemented yet.

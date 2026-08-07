@@ -12,6 +12,8 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db_session
+from app.modules.analytics.application.service import AnalyticsService
+from app.modules.analytics.infrastructure.repository import SqlAlchemyAnalyticsEventRepository
 from app.modules.auth.presentation.dependencies import get_current_user_id
 from app.modules.offers.application.favorite_service import FavoriteService
 from app.modules.offers.application.service import OfferService
@@ -35,7 +37,9 @@ def get_offer_service(session: AsyncSession = Depends(get_db_session)) -> OfferS
 
 def get_favorite_service(session: AsyncSession = Depends(get_db_session)) -> FavoriteService:
     return FavoriteService(
-        favorites=SqlAlchemyFavoriteRepository(session), offers=SqlAlchemyOfferRepository(session)
+        favorites=SqlAlchemyFavoriteRepository(session),
+        offers=SqlAlchemyOfferRepository(session),
+        analytics=AnalyticsService(SqlAlchemyAnalyticsEventRepository(session)),
     )
 
 

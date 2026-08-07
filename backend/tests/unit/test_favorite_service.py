@@ -129,3 +129,65 @@ async def test_list_favorites_only_returns_the_given_users_favorites() -> None:
 
     assert total == 1
     assert favorites[0].offer_id == offer_a.id
+
+
+class FakeAnalyticsCollector:
+    def __init__(self) -> None:
+        self.tracked: list[tuple[str, uuid.UUID | None, dict[str, object]]] = []
+
+    async def track(
+        self, event_name: str, *, user_id: uuid.UUID | None, properties: dict[str, object]
+    ) -> None:
+        self.tracked.append((event_name, user_id, properties))
+
+
+class FailingAnalyticsCollector:
+    async def track(
+        self, event_name: str, *, user_id: uuid.UUID | None, properties: dict[str, object]
+    ) -> None:
+        raise RuntimeError("analytics backend is down")
+
+
+async def test_add_favorite_tracks_an_offer_favorited_event() -> None:
+    offer = _offer()
+    user_id = uuid.uuid4()
+    analytics = FakeAnalyticsCollector()
+    service = FavoriteService(
+        FakeFavoriteRepository(), FakeOfferRepository([offer]), analytics=analytics
+    )
+
+    await service.add_favorite(user_id, offer.id)
+
+    assert len(analytics.tracked) == 1
+    event_name, tracked_user_id, properties = analytics.tracked[0]
+    assert event_name == "offer_favorited"
+    assert tracked_user_id == user_id
+    assert properties["offer_id"] == str(offer.id)
+
+
+async def test_remove_favorite_tracks_an_offer_unfavorited_event() -> None:
+    offer = _offer()
+    user_id = uuid.uuid4()
+    analytics = FakeAnalyticsCollector()
+    service = FavoriteService(
+        FakeFavoriteRepository(), FakeOfferRepository([offer]), analytics=analytics
+    )
+    await service.add_favorite(user_id, offer.id)
+
+    await service.remove_favorite(user_id, offer.id)
+
+    assert analytics.tracked[-1][0] == "offer_unfavorited"
+
+
+async def test_add_favorite_succeeds_even_if_analytics_tracking_fails() -> None:
+    offer = _offer()
+    user_id = uuid.uuid4()
+    service = FavoriteService(
+        FakeFavoriteRepository(),
+        FakeOfferRepository([offer]),
+        analytics=FailingAnalyticsCollector(),
+    )
+
+    # Must not raise — a tracking failure must never block the real action.
+    favorite = await service.add_favorite(user_id, offer.id)
+    assert favorite.offer_id == offer.id

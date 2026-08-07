@@ -28,6 +28,7 @@ from app.core.logging import configure_logging, get_logger
 from app.core.metrics import REQUEST_COUNT, REQUEST_LATENCY_SECONDS
 from app.db.redis import get_redis
 from app.db.session import session_factory
+from app.modules.analytics.presentation.router import router as analytics_router
 from app.modules.auth.presentation.router import router as auth_router
 from app.modules.notifications.presentation.router import router as notifications_router
 from app.modules.offers.presentation.router import favorites_router, offers_router
@@ -217,6 +218,7 @@ def _mount_routers(app: FastAPI) -> None:
     app.include_router(search_router)
     app.include_router(favorites_router)
     app.include_router(notifications_router)
+    app.include_router(analytics_router)
 
 
 app = create_app()
