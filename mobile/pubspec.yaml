@@ -38,7 +38,13 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^6.0.0
+  # 5.0.0, not the latest (6.x): flutter_lints 6.x requires Dart SDK
+  # ^3.8.0, but CI pins Flutter 3.27.0 (see .github/workflows/ci.yml),
+  # which bundles Dart 3.6.0 — 6.x failed `flutter pub get` in CI outright
+  # (the first real verification this repo's Flutter code ever got). 5.0.0
+  # requires only ^3.5.0, satisfied by 3.6.0. Dev-only lint rules, zero
+  # runtime impact either way.
+  flutter_lints: ^5.0.0
 
 flutter:
   uses-material-design: true
