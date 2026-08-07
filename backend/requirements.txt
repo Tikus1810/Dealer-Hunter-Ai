@@ -3,7 +3,7 @@ uvicorn[standard]==0.34.0
 pydantic==2.10.4
 pydantic-settings==2.7.1
 email-validator==2.2.0
-SQLAlchemy==2.0.36
+SQLAlchemy==2.0.51
 # SQLAlchemy's async engine needs this at runtime (`greenlet_spawn`,
 # bridging sync driver internals into the async event loop) whenever it
 # actually opens a connection — never surfaced locally because this
