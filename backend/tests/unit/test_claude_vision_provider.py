@@ -72,6 +72,10 @@ async def test_analyze_returns_parsed_assessment() -> None:
     assert result.confidence == 0.8
     assert result.observed_damage == ["small scuff on the lid"]
     assert result.reasoning
+    # Band 16: AI Rules — every assessment records which model/prompt
+    # version actually produced it, not just what's configured today.
+    assert result.model_used == "claude-opus-5"
+    assert result.prompt_version
 
 
 @respx.mock

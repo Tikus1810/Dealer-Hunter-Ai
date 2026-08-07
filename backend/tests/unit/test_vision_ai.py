@@ -137,11 +137,20 @@ class TestOutputFormatter:
             uncertain_notes=[],
             missing_components=["charger"],
             reasoning="Light wear visible in photos.",
+            model_used="claude-opus-5",
+            prompt_version="1.0.0",
         )
         result = OutputFormatter().format(uuid.uuid4(), 3, [], 0.5, cosmetic)
         assert result.cosmetic_condition == "good"
         assert result.cosmetic_condition_note == "Light wear visible in photos."
         assert result.missing_components == ["charger"]
+        assert result.cosmetic_model_used == "claude-opus-5"
+        assert result.cosmetic_prompt_version == "1.0.0"
+
+    def test_cosmetic_model_provenance_is_none_when_no_analyzer_ran(self) -> None:
+        result = OutputFormatter().format(uuid.uuid4(), 3, [], 0.5)
+        assert result.cosmetic_model_used is None
+        assert result.cosmetic_prompt_version is None
 
 
 class TestImagePreprocessor:
@@ -292,6 +301,8 @@ class TestVisionAnalysisService:
                     uncertain_notes=[],
                     missing_components=[],
                     reasoning="Looks fine.",
+                    model_used="fake-model",
+                    prompt_version="1.0.0",
                 )
 
         cosmetic_analyzer = FakeCosmeticAnalyzer()
@@ -305,6 +316,8 @@ class TestVisionAnalysisService:
         assert result.cosmetic_condition == "good"
         assert result.cosmetic_condition_note == "Looks fine."
         assert cosmetic_analyzer.called_with == offer.images
+        assert result.cosmetic_model_used == "fake-model"
+        assert result.cosmetic_prompt_version == "1.0.0"
 
     @respx.mock
     async def test_analyze_falls_back_gracefully_when_cosmetic_analyzer_fails(self) -> None:

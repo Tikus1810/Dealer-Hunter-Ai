@@ -23,6 +23,13 @@ from pydantic import BaseModel, Field
 from app.core.config import Settings
 from app.modules.vision.domain.entities import CosmeticAssessment
 
+# Bump PROMPT_VERSION whenever _SYSTEM_PROMPT's wording changes the
+# *meaning* of the assessment it produces (not for typo fixes) — Band 16:
+# AI Rules "prompt management". Every `CosmeticAssessment` carries the
+# version that produced it, so a stored/logged assessment stays
+# interpretable even after the prompt moves on.
+_PROMPT_VERSION = "1.0.0"
+
 _SYSTEM_PROMPT = (
     "You assess the VISIBLE cosmetic condition of a used-electronics listing from "
     "its photos only. Report only what the images actually show — never guess about "
@@ -118,4 +125,6 @@ class ClaudeCosmeticConditionAnalyzer:
             uncertain_notes=assessment.uncertain_notes,
             missing_components=assessment.missing_components,
             reasoning=assessment.reasoning,
+            model_used=self._model,
+            prompt_version=_PROMPT_VERSION,
         )

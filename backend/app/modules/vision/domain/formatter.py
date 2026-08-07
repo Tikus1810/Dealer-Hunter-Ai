@@ -34,10 +34,14 @@ class OutputFormatter:
             cosmetic_condition = cosmetic.condition
             cosmetic_condition_note = cosmetic.reasoning
             missing_components = cosmetic.missing_components
+            cosmetic_model_used: str | None = cosmetic.model_used
+            cosmetic_prompt_version: str | None = cosmetic.prompt_version
         else:
             cosmetic_condition = "not_available"
             cosmetic_condition_note = _COSMETIC_CONDITION_NOTE
             missing_components = []
+            cosmetic_model_used = None
+            cosmetic_prompt_version = None
 
         return VisionObservation(
             offer_id=offer_id,
@@ -49,4 +53,6 @@ class OutputFormatter:
             missing_components=missing_components,
             confidence=confidence,
             observation_version=OBSERVATION_VERSION,
+            cosmetic_model_used=cosmetic_model_used,
+            cosmetic_prompt_version=cosmetic_prompt_version,
         )

@@ -64,6 +64,8 @@ def _to_response(observation: VisionObservation) -> VisionObservationResponse:
         missing_components=observation.missing_components,
         confidence=observation.confidence,
         observation_version=observation.observation_version,
+        cosmetic_model_used=observation.cosmetic_model_used,
+        cosmetic_prompt_version=observation.cosmetic_prompt_version,
     )
 
 

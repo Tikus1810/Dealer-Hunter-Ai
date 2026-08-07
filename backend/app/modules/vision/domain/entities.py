@@ -15,6 +15,8 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass, field
 
+from app.core.ai_rules import validate_confidence
+
 
 @dataclass(frozen=True, slots=True)
 class ImageQualityObservation:
@@ -28,7 +30,16 @@ class ImageQualityObservation:
 
 @dataclass(frozen=True, slots=True)
 class CosmeticAssessment:
-    """Result of an actual vision-model pass over the listing images."""
+    """Result of an actual vision-model pass over the listing images.
+
+    `model_used`/`prompt_version` (Band 16: AI Rules — "model versioning",
+    "prompt management") make every assessment traceable to exactly what
+    produced it: `ANTHROPIC_VISION_MODEL` is operator-configurable, so two
+    assessments of the same photos taken months apart may have run against
+    different models entirely; `prompt_version` does the same for the
+    system prompt (`_SYSTEM_PROMPT`/`_PROMPT_VERSION` in
+    `claude_vision_provider.py`) independently of the model.
+    """
 
     condition: str  # "excellent" | "good" | "fair" | "poor" | "damaged" | "unclear"
     confidence: float  # 0.0-1.0, the model's own confidence in this assessment
@@ -36,6 +47,12 @@ class CosmeticAssessment:
     uncertain_notes: list[str]  # possible but not clearly visible/certain
     missing_components: list[str]
     reasoning: str
+    model_used: str
+    prompt_version: str
+
+    def __post_init__(self) -> None:
+        # Band 16: AI Rules — backstop, same reasoning as DealScoreResult's.
+        validate_confidence("confidence", self.confidence)
 
 
 @dataclass(frozen=True, slots=True)
@@ -49,3 +66,10 @@ class VisionObservation:
     missing_components: list[str] = field(default_factory=list)
     confidence: float = 0.0
     observation_version: str = "1.0.0"
+    # None when cosmetic_condition == "not_available" (no analyzer
+    # configured) — there's nothing to attribute provenance to yet.
+    cosmetic_model_used: str | None = None
+    cosmetic_prompt_version: str | None = None
+
+    def __post_init__(self) -> None:
+        validate_confidence("confidence", self.confidence)

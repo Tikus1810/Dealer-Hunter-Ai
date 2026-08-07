@@ -369,6 +369,30 @@ default, a tracking failure never blocks the real action). Retention is a
 manual script (`scripts/purge_analytics_events.py`), not an automatic job —
 see the doc for why.
 
+## AI Rules Framework (Band 16)
+
+Full writeup — the five governing rules, confidence-handling policy,
+prompt management — in [docs/ai_rules.md](docs/ai_rules.md). This is a
+governance layer over DealBrain/RepairBrain/Vision AI (already built in
+Tasks #6–#8), not a new feature: formalizes what those three were already
+doing (explainable, honest-about-uncertainty, versioned, bounded,
+reviewable weights) and closes two concrete gaps Task #17 found:
+
+- **Model/prompt versioning**: `VisionObservation` now carries
+  `cosmetic_model_used`/`cosmetic_prompt_version` — before this,
+  `ANTHROPIC_VISION_MODEL` being operator-configurable meant two
+  assessments months apart could have run against different Claude models
+  with no way to tell afterward.
+- **Bounded values as an entity invariant, not just an engine behavior**:
+  new `app/core/ai_rules.py` (`validate_score`/`validate_confidence`) runs
+  from `__post_init__` on every score/confidence-bearing entity
+  (`DealScoreResult`, `AnalyzerOutput`, `RepairReport`,
+  `CosmeticAssessment`, `VisionObservation`) — each one now refuses to be
+  constructed outside its documented range, regardless of what code built
+  it. `ScoringEngine`/`RepairScoringEngine` already clamped their own
+  outputs; this is the backstop for every other way one of these entities
+  could get built (a future analyzer, a bug, a test double).
+
 ## Status
 
 See the 20 project tasks tracked for this build for current progress

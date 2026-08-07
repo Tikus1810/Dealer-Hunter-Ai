@@ -26,3 +26,7 @@ class VisionObservationResponse(BaseModel):
     missing_components: list[str]
     confidence: float
     observation_version: str
+    # Band 16: AI Rules — model/prompt versioning. None when
+    # cosmetic_condition == "not_available" (no analyzer configured).
+    cosmetic_model_used: str | None
+    cosmetic_prompt_version: str | None

@@ -6,6 +6,8 @@ import uuid
 from dataclasses import dataclass, field
 from enum import StrEnum
 
+from app.core.ai_rules import validate_score
+
 
 class RepairDifficulty(StrEnum):
     BEGINNER = "beginner"
@@ -42,3 +44,7 @@ class RepairReport:
     risk_notes: list[str] = field(default_factory=list)
     summary: str = ""
     report_version: str = "1.0.0"
+
+    def __post_init__(self) -> None:
+        # Band 16: AI Rules — backstop, same reasoning as DealScoreResult's.
+        validate_score("repair_score", self.repair_score)
