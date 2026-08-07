@@ -46,7 +46,7 @@ jobs:
       # reproducible, and what a rollback re-points at) and `latest` (a
       # convenience pointer, not something a real rollback should rely on).
       - name: Build and push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ./backend
           file: ./backend/Dockerfile
