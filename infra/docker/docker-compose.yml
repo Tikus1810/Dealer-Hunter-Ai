@@ -1,5 +1,10 @@
 version: "3.9"
 
+# Local development stack. `docker compose -f infra/docker/docker-compose.yml
+# up --build` from the repo root. For a production-shaped compose file (pre-
+# built image, no host-published DB/Redis ports, restart policies), see
+# docker-compose.prod.yml + docs/deployment.md.
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -16,6 +21,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    restart: unless-stopped
 
   redis:
     image: redis:7-alpine
@@ -26,6 +32,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    restart: unless-stopped
 
   backend:
     build:
@@ -34,7 +41,15 @@ services:
     env_file:
       - ../../backend/.env
     environment:
+      # These two override whatever .env has (its defaults point at
+      # `localhost`, which inside this container is itself, not the
+      # `postgres`/`redis` services below) — everything else (JWT secret,
+      # eBay/FCM/Anthropic keys, ...) still comes from .env via env_file.
+      # DATABASE_URL_SYNC matters even though the app itself is fully
+      # async: the container's docker-entrypoint.sh runs `alembic upgrade
+      # head` on startup, and Alembic uses the sync driver (see alembic/env.py).
       DATABASE_URL: postgresql+asyncpg://dealhunter:dealhunter@postgres:5432/dealhunter
+      DATABASE_URL_SYNC: postgresql+psycopg2://dealhunter:dealhunter@postgres:5432/dealhunter
       REDIS_URL: redis://redis:6379/0
     ports:
       - "8000:8000"
@@ -43,6 +58,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   postgres_data:

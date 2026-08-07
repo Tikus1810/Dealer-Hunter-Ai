@@ -7,6 +7,7 @@ logic must never live here (Band 03: no business logic in controllers).
 
 from __future__ import annotations
 
+import time
 import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
@@ -15,10 +16,18 @@ import structlog
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
+from redis.exceptions import RedisError
+from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 
+from app.bootstrap import build_scheduler
 from app.core.config import get_settings
 from app.core.exceptions import DomainError, ErrorResponse
 from app.core.logging import configure_logging, get_logger
+from app.core.metrics import REQUEST_COUNT, REQUEST_LATENCY_SECONDS
+from app.db.redis import get_redis
+from app.db.session import session_factory
 from app.modules.auth.presentation.router import router as auth_router
 from app.modules.notifications.presentation.router import router as notifications_router
 from app.modules.offers.presentation.router import favorites_router, offers_router
@@ -36,7 +45,22 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
     configure_logging(debug=settings.app_debug)
     logger.info("app_startup", env=settings.app_env)
+
+    # Band 13: the marketplace ingestion scheduler (built in Task #5, never
+    # had a call site until now) runs as an in-process background loop for
+    # the lifetime of this app instance — see app/bootstrap.py for why it's
+    # off unless SCHEDULER_ENABLED=true and a provider is configured, and
+    # why it must only run in one replica per environment.
+    scheduler = build_scheduler(settings)
+    if scheduler is not None:
+        scheduler.start()
+        logger.info("scheduler_started", interval_seconds=settings.scheduler_interval_seconds)
+
     yield
+
+    if scheduler is not None:
+        await scheduler.stop()
+        logger.info("scheduler_stopped")
     logger.info("app_shutdown")
 
 
@@ -70,6 +94,23 @@ def create_app() -> FastAPI:
         response.headers["X-Correlation-ID"] = correlation_id
         return response
 
+    @app.middleware("http")
+    async def metrics_middleware(
+        request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
+        start = time.perf_counter()
+        response = await call_next(request)
+        duration = time.perf_counter() - start
+        # `request.scope["route"]` is only populated once routing has
+        # resolved, which has happened by the time `call_next` returns —
+        # using it (not `request.url.path`) keeps the label cardinality
+        # bounded (`/api/v1/offers/{id}`, not one series per UUID).
+        route = request.scope.get("route")
+        path_template = route.path if route is not None else request.url.path
+        REQUEST_COUNT.labels(request.method, path_template, response.status_code).inc()
+        REQUEST_LATENCY_SECONDS.labels(request.method, path_template).observe(duration)
+        return response
+
     @app.exception_handler(DomainError)
     async def domain_error_handler(request: Request, exc: DomainError) -> JSONResponse:
         correlation_id = getattr(request.state, "correlation_id", str(uuid.uuid4()))
@@ -83,7 +124,44 @@ def create_app() -> FastAPI:
 
     @app.get("/api/v1/health", tags=["system"])
     async def health() -> dict[str, str]:
+        """Liveness: this process can respond at all. Deliberately checks
+        nothing else — a DB/Redis blip must not make an orchestrator kill
+        and restart an otherwise-healthy process (that's what /ready is
+        for)."""
         return {"status": "ok"}
+
+    @app.get("/api/v1/ready", tags=["system"])
+    async def ready() -> JSONResponse:
+        """Readiness: this process can actually serve requests that touch
+        the database/cache. An orchestrator should stop routing traffic
+        here (not restart the process) while this returns 503 — e.g. during
+        a Postgres failover."""
+        checks: dict[str, str] = {}
+        healthy = True
+
+        try:
+            async with session_factory() as session:
+                await session.execute(text("SELECT 1"))
+            checks["database"] = "ok"
+        except SQLAlchemyError as exc:
+            checks["database"] = f"error: {exc}"
+            healthy = False
+
+        try:
+            await get_redis().ping()
+            checks["redis"] = "ok"
+        except RedisError as exc:
+            checks["redis"] = f"error: {exc}"
+            healthy = False
+
+        return JSONResponse(
+            status_code=200 if healthy else 503,
+            content={"status": "ok" if healthy else "unavailable", "checks": checks},
+        )
+
+    @app.get("/metrics", include_in_schema=False)
+    async def metrics() -> Response:
+        return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
     _mount_routers(app)
     return app

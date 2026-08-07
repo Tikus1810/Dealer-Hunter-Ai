@@ -1,0 +1,83 @@
+version: "3.9"
+
+# Production-shaped compose file — a *template*, not a deployed environment
+# (no cloud/server account has been provisioned for this project yet; see
+# docs/deployment.md "Known gaps"). Differences from docker-compose.yml:
+#   - `backend` runs a pre-built image (pushed by .github/workflows/cd.yml
+#     to GHCR) instead of building locally.
+#   - Postgres/Redis ports are NOT published to the host — only `backend`
+#     reaches them, over the compose network. Publish 5432/6379 only if you
+#     need host-machine access (e.g. an ad-hoc `psql`), and prefer an SSH
+#     tunnel over that in a real deployment.
+#   - No `env_file` — every secret must come from real environment
+#     variables (a secrets manager, CI/CD secret store, or systemd
+#     EnvironmentFile with locked-down permissions), never a committed
+#     file. `${VAR:?error message}` fails startup loudly if something
+#     required is missing, instead of silently booting with an empty secret.
+#   - `restart: always` (not `unless-stopped`) — a prod host reboot should
+#     bring these back without a human re-running `docker compose up`.
+#
+# Usage: `docker compose -f infra/docker/docker-compose.prod.yml up -d`
+# with IMAGE_TAG and the required *_URL/*_SECRET_KEY variables exported in
+# the deploying shell/CI environment first.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: always
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: always
+
+  backend:
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:?GITHUB_REPOSITORY_OWNER is required}/dealhunter-backend:${IMAGE_TAG:-latest}
+    environment:
+      APP_ENV: production
+      APP_DEBUG: "false"
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      DATABASE_URL_SYNC: ${DATABASE_URL_SYNC:?DATABASE_URL_SYNC is required}
+      REDIS_URL: ${REDIS_URL:?REDIS_URL is required}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?JWT_SECRET_KEY is required}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?CORS_ALLOWED_ORIGINS is required}
+      EBAY_CLIENT_ID: ${EBAY_CLIENT_ID:-}
+      EBAY_CLIENT_SECRET: ${EBAY_CLIENT_SECRET:-}
+      FCM_PROJECT_ID: ${FCM_PROJECT_ID:-}
+      FCM_CREDENTIALS_JSON_PATH: ${FCM_CREDENTIALS_JSON_PATH:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      SCHEDULER_ENABLED: ${SCHEDULER_ENABLED:-false}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+
+volumes:
+  postgres_data:
+  redis_data:

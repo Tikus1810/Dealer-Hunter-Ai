@@ -51,7 +51,9 @@ Or via Docker Compose (Postgres + Redis + backend):
 docker compose -f infra/docker/docker-compose.yml up --build
 ```
 
-Health check: `GET http://localhost:8000/api/v1/health`
+Liveness: `GET http://localhost:8000/api/v1/health` (process is up, no dependency checks)
+Readiness: `GET http://localhost:8000/api/v1/ready` (DB + Redis reachable — 503 if not)
+Metrics: `GET http://localhost:8000/metrics` (Prometheus text format)
 API docs: `http://localhost:8000/api/docs`
 
 ## Tests (Band 12: Testing_QA)
@@ -244,13 +246,17 @@ best-effort pushes via FCM), and `FcmNotificationSender`
 **Event routing:** `SavedSearchMatchNotifier`
 (`application/match_notifier.py`) implements `OfferPersistedHookProtocol`
 (`app/modules/offers/application/interfaces.py`) — the "Trigger Analysis"
-extension point `IngestionService` always had. When wired in (see
-`AsyncIntervalScheduler`'s `on_offer_persisted` param), every newly
-persisted offer is matched against active saved searches
-(`SearchService.match_offer_against_profiles`) and each match becomes a
-notification, without the `offers` module ever importing `notifications`
-or `search` directly — the hook is a `Protocol` the composition root
-satisfies with a concrete implementation (Band 2 module-boundary rule).
+extension point `IngestionService` always had. `AsyncIntervalScheduler`
+(Band 07/13) takes a `hook_factory: Callable[[AsyncSession], ...]`, not a
+fixed instance — a fresh `SavedSearchMatchNotifier` per job, bound to that
+job's own DB session, since it needs to read back the just-persisted offer
+before the transaction commits. `app/bootstrap.py` (Task #14) wires the
+real one in; every newly persisted offer is matched against active saved
+searches (`SearchService.match_offer_against_profiles`) and each match
+becomes a notification, without the `offers` module ever importing
+`notifications` or `search` directly — the hook is a `Protocol` the
+composition root satisfies with a concrete implementation (Band 2
+module-boundary rule).
 
 REST surface: `POST`/`DELETE /api/v1/notifications/devices` (register/
 unregister an FCM device token), `GET /api/v1/notifications` (paginated
@@ -283,6 +289,39 @@ individually checked against current package docs while writing them —
 see mobile/README.md's "Status" for exactly what that does and doesn't
 cover).
 
+## Deployment & Monitoring (Band 13)
+
+Full writeup — environments, release process, rollback, backups, disaster
+recovery — in [docs/deployment.md](docs/deployment.md). Summary:
+
+- **Docker**: multi-stage `backend/Dockerfile` (build tools never ship in
+  the runtime image). `docker-entrypoint.sh` runs `alembic upgrade head`
+  before starting `uvicorn` — correct for the single-instance setup this
+  repo ships (`infra/docker/docker-compose.yml`); see the script's own
+  comment before scaling to multiple replicas.
+- **CI/CD**: `.github/workflows/ci.yml` (lint/format/typecheck/test, unchanged
+  from Band 12) gates `.github/workflows/cd.yml`, which builds and pushes
+  `backend/` to `ghcr.io/<owner>/dealhunter-backend` on every green `main`
+  build, tagged with both the commit sha and `latest`. `docker-
+  compose.prod.yml` is the template for running that image (no
+  cloud/server account is provisioned for this project yet — see "Known
+  gaps" below).
+- **Monitoring**: `GET /api/v1/health` (liveness, no dependencies), `GET
+  /api/v1/ready` (readiness — checks Postgres + Redis, 503 if either is
+  down), `GET /metrics` (Prometheus text format — request count + latency
+  histogram by method/path template, `app/core/metrics.py`).
+- **Scheduler**: the Band 07 marketplace ingestion scheduler
+  (`AsyncIntervalScheduler`) finally has a call site —
+  `app/bootstrap.py` builds it from `Settings` and `app/main.py`'s
+  lifespan starts/stops it. Off by default (`SCHEDULER_ENABLED=false`);
+  when enabled it needs `EBAY_CLIENT_ID`/`EBAY_CLIENT_SECRET` (or
+  `KLEINANZEIGEN_PROVIDER_ENABLED=true`) to have any job to run, and is an
+  in-process loop, not a distributed job queue — enable it in exactly one
+  running instance per environment.
+- **Dependency updates**: `.github/dependabot.yml` — weekly PRs for
+  `backend/requirements.txt` and GitHub Actions versions. No `pub`
+  (Flutter) entry yet, deliberately — see the file's own comment.
+
 ## Status
 
 See the 20 project tasks tracked for this build for current progress
@@ -300,12 +339,14 @@ papered over with placeholders:
   notifications are still created/listed/preferenced normally, just never
   pushed to a device. Fully tested against a fake `send_fn` seam
   (`tests/unit/test_fcm_provider.py`) but unverified against the live FCM
-  API, same pattern as the eBay/Claude providers above. The scheduler that
-  would trigger ingestion (and therefore saved-search-match notifications)
-  in production also isn't started anywhere yet — `AsyncIntervalScheduler`
-  exists and is tested, but nothing calls `.start()` from `app/main.py`,
-  same as before this task (real provider/job configuration is a
-  Task #14/Deployment concern, not a Task #10 one).
+  API, same pattern as the eBay/Claude providers above. `AsyncIntervalScheduler`
+  now does start from `app/main.py` (via `app/bootstrap.py`, Task #14) —
+  but it's off by default (`SCHEDULER_ENABLED=false`) and, even enabled,
+  produces no jobs without real `EBAY_CLIENT_ID`/`EBAY_CLIENT_SECRET` or
+  `KLEINANZEIGEN_PROVIDER_ENABLED=true`, so the end of this chain (a real
+  push notification firing off a real ingested offer) is still unverified
+  against anything live — every link up to that point has test coverage,
+  none of them against the real external services.
 - **eBay developer credentials** are needed for `EbayApiProvider` to hit
   real endpoints — until then it's fully tested against mocked HTTP
   responses (`tests/unit/test_ebay_api_provider.py`) but unverified against
@@ -324,3 +365,15 @@ papered over with placeholders:
   `analyze`/`test` yet, and no `android/`/`ios/` platform folders exist
   (needs `flutter create .` first). See `mobile/README.md`'s "Status"
   section for exact verification steps before building further on it.
+- **Deployment (Band 13)** was written without a Docker daemon or a
+  GitHub remote available in this sandbox: `backend/Dockerfile`,
+  `docker-entrypoint.sh` and both compose files have never actually been
+  built/run, and `.github/workflows/cd.yml` has never fired (it needs the
+  CI workflow to complete successfully on a real `main` branch push first —
+  see the workflow's own comment on why it's `workflow_run`-triggered, not
+  `push`-triggered). No cloud/server account exists for this project yet,
+  so `docker-compose.prod.yml` and `docs/deployment.md`'s release/rollback/
+  backup process are a template and a runbook to follow, not something
+  exercised end-to-end. Push this repo to GitHub and run
+  `docker compose -f infra/docker/docker-compose.yml up --build` locally
+  before trusting any of it further.

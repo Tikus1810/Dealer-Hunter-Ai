@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -49,14 +50,22 @@ class AsyncIntervalScheduler:
         normalizer: OfferNormalizerProtocol,
         validator: OfferValidatorProtocol,
         interval_seconds: float = 900.0,
-        on_offer_persisted: OfferPersistedHookProtocol | None = None,
+        hook_factory: Callable[[AsyncSession], OfferPersistedHookProtocol] | None = None,
     ) -> None:
+        """`hook_factory` builds a fresh `OfferPersistedHookProtocol` bound to
+        the *current job's* session, not a session-less singleton — a real
+        hook (e.g. `SavedSearchMatchNotifier`) reads back the just-persisted
+        offer to match it against saved searches, which only works if it
+        shares the same not-yet-committed transaction (see
+        `IngestionService._persist`: the hook runs before `run_once` below
+        commits). A hook built once at scheduler-construction time, before
+        any session exists, could not satisfy that."""
         self._jobs = jobs
         self._session_factory = session_factory
         self._normalizer = normalizer
         self._validator = validator
         self._interval = interval_seconds
-        self._on_offer_persisted = on_offer_persisted
+        self._hook_factory = hook_factory
         self._task: asyncio.Task[None] | None = None
         self._stopped = asyncio.Event()
 
@@ -65,12 +74,13 @@ class AsyncIntervalScheduler:
             async with self._session_factory() as session:
                 try:
                     repo = SqlAlchemyOfferRepository(session)
+                    hook = self._hook_factory(session) if self._hook_factory is not None else None
                     service = IngestionService(
                         job.provider,
                         self._normalizer,
                         self._validator,
                         repo,
-                        on_offer_persisted=self._on_offer_persisted,
+                        on_offer_persisted=hook,
                     )
                     result = await service.ingest(
                         category=job.category, query=job.query, limit=job.limit

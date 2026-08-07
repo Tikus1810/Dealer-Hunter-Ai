@@ -1,0 +1,19 @@
+# Keeps the build context small and, more importantly, keeps things that
+# must never end up in an image (real .env, .git history, coverage data)
+# out of it — `COPY . .` in the Dockerfile would otherwise include them.
+.env
+.env.*
+!.env.example
+.git
+.venv
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+coverage.xml
+*.egg-info/
+tests/

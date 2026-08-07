@@ -1,0 +1,25 @@
+version: 2
+
+# Weekly, not daily — this is a solo/small-team project; a flood of PRs
+# nobody reviews for days is worse than one batched week. Version-pinned
+# `requirements.txt`/`pubspec.yaml` (see backend/README.md and mobile/
+# README.md for why both deliberately pin exact versions) mean these PRs
+# are the intended mechanism for moving those pins forward deliberately,
+# reviewed one at a time, rather than floating ranges that silently drift.
+updates:
+  - package-ecosystem: pip
+    directory: /backend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+
+  # No `pub` entry yet: mobile/pubspec.yaml has never been resolved by a
+  # real `flutter pub get` (see mobile/README.md "Status") — adding
+  # automated update PRs against unverified pins would compound that risk
+  # rather than reduce it. Add this once a real Flutter run has confirmed
+  # the current pins actually work.

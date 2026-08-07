@@ -65,6 +65,13 @@ class Settings(BaseSettings):
     anthropic_api_key: str = Field(default="")
     anthropic_vision_model: str = Field(default="claude-opus-5")
 
+    # Marketplace ingestion scheduler (Band 13: Deployment/DevOps).
+    # Off by default so every non-production run (tests, local `uvicorn`
+    # without a filled-in .env) doesn't silently start background network
+    # calls against eBay. Production deployments opt in explicitly.
+    scheduler_enabled: bool = Field(default=False)
+    scheduler_interval_seconds: float = Field(default=900.0)
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.cors_allowed_origins.split(",") if o.strip()]
