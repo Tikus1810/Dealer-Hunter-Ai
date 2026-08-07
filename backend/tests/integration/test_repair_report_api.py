@@ -11,6 +11,7 @@ from collections.abc import AsyncGenerator
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import session_factory
@@ -31,8 +32,15 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient]:
 
 async def _seed_offer(*, description: str) -> Offer:
     async with session_factory() as session:
-        session.add(CategoryModel(code=OfferCategory.MACBOOK.value, name="MacBooks"))
-        await session.flush()
+        # Idempotent — see test_deal_score_api.py's _seed_offer comment.
+        existing = (
+            await session.execute(
+                select(CategoryModel).where(CategoryModel.code == OfferCategory.MACBOOK.value)
+            )
+        ).scalar_one_or_none()
+        if existing is None:
+            session.add(CategoryModel(code=OfferCategory.MACBOOK.value, name="MacBooks"))
+            await session.flush()
         offer = await SqlAlchemyOfferRepository(session).upsert(
             Offer(
                 id=uuid.uuid4(),

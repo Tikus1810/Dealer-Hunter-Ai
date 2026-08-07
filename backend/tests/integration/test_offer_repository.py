@@ -15,7 +15,12 @@ from app.modules.offers.infrastructure.repository import SqlAlchemyOfferReposito
 pytestmark = pytest.mark.integration
 
 
-def _make_offer(*, source_listing_id: str = "12345", price: float = 899.0) -> Offer:
+def _make_offer(
+    *,
+    source_listing_id: str = "12345",
+    price: float = 899.0,
+    category: OfferCategory = OfferCategory.MACBOOK,
+) -> Offer:
     return Offer(
         id=uuid.uuid4(),
         source=OfferSource.EBAY,
@@ -24,15 +29,27 @@ def _make_offer(*, source_listing_id: str = "12345", price: float = 899.0) -> Of
         description="Kaum benutzt, keine Kratzer.",
         price_amount=price,
         price_currency="EUR",
-        category=OfferCategory.MACBOOK,
+        category=category,
         url="https://ebay.de/itm/12345",
     )
 
 
 async def test_upsert_without_seeded_category_raises(db_session: AsyncSession) -> None:
     repo = SqlAlchemyOfferRepository(db_session)
+    # GAME_CONSOLE specifically: every other integration test file that
+    # seeds a category uses MACBOOK or IPHONE (grep confirms, as of this
+    # writing) and commits it for real through the shared global engine —
+    # this test needs a category code guaranteed absent from the whole
+    # shared CI Postgres instance, not just this test's own (rolled-back)
+    # transaction, since `_category_id_for`'s SELECT sees other sessions'
+    # already-committed rows too. Fragile-by-convention, not by
+    # construction: if a future test starts seeding GAME_CONSOLE, this
+    # breaks the same way it just did for MACBOOK. No fully robust fix
+    # exists without either deleting other tests' committed rows (risks a
+    # real ForeignKeyViolation against their offers) or mocking the
+    # category lookup directly instead of testing the real repository.
     with pytest.raises(NotFoundError):
-        await repo.upsert(_make_offer())
+        await repo.upsert(_make_offer(category=OfferCategory.GAME_CONSOLE))
 
 
 async def test_upsert_creates_then_updates_on_same_source_listing(

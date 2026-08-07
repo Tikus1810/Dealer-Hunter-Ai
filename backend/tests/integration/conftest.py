@@ -12,6 +12,7 @@ from __future__ import annotations
 from collections.abc import AsyncGenerator
 
 import pytest_asyncio
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.config import get_settings
@@ -85,6 +86,22 @@ async def db_session(_schema: None) -> AsyncGenerator[AsyncSession]:
 
 @pytest_asyncio.fixture
 async def seeded_category(db_session: AsyncSession) -> CategoryModel:
+    """Idempotent, not a bare INSERT: several other integration test files
+    seed the same category `code` through the real global `session_factory`
+    engine and commit it for real (deliberately — they test through the
+    real HTTP app), so it can already exist as a permanent row in the
+    shared CI Postgres instance by the time this fixture runs, independent
+    of this fixture's own `db_session` transaction being rolled back. A
+    bare INSERT here raced a real `UniqueViolationError` against whichever
+    test happened to run first — never caught locally (no Postgres), only
+    surfaced the first time every integration test ran together for real."""
+    existing = (
+        await db_session.execute(
+            select(CategoryModel).where(CategoryModel.code == OfferCategory.MACBOOK.value)
+        )
+    ).scalar_one_or_none()
+    if existing is not None:
+        return existing
     category = CategoryModel(code=OfferCategory.MACBOOK.value, name="MacBooks")
     db_session.add(category)
     await db_session.flush()
