@@ -4,6 +4,14 @@ pydantic==2.10.4
 pydantic-settings==2.7.1
 email-validator==2.2.0
 SQLAlchemy==2.0.36
+# SQLAlchemy's async engine needs this at runtime (`greenlet_spawn`,
+# bridging sync driver internals into the async event loop) whenever it
+# actually opens a connection — never surfaced locally because this
+# sandbox has no Postgres to open a real connection against; only found
+# via the first real CI run against actual Postgres. Was present locally
+# only as a stray transitive dependency of something else already
+# installed, never declared here — classic "works on my machine" gap.
+greenlet==3.5.4
 alembic==1.14.0
 asyncpg==0.30.0
 psycopg2-binary==2.9.10

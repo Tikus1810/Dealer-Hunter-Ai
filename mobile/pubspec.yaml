@@ -26,14 +26,26 @@ dependencies:
   # imperative API (GoRouter/GoRoute/GoRouterState) is used — not the
   # codegen-based GoRouteData/TypedGoRoute surface, which changed more
   # across major versions.
-  go_router: ^17.4.0
+  #
+  # 17.1.3, not 17.4.0: 17.2.0+ requires Dart SDK ^3.10.0, but CI pins
+  # Flutter 3.27.0 (bundles Dart 3.6.0) — `flutter pub get` failed outright
+  # in CI (see the same note on flutter_lints below; found in the same
+  # first-real-CI-run pass). 17.1.3 requires only ^3.4.0. Only the stable
+  # imperative API above is used, present unchanged since well before 13.x.
+  go_router: ^17.1.3
 
   # REST client (Band 04: automatic token refresh, retry policy, central
   # error handling) — see lib/core/network/.
   dio: ^5.11.0
 
   # Encrypted on-device storage for JWT access/refresh tokens.
-  flutter_secure_storage: ^11.0.0
+  #
+  # 10.3.1, not 11.0.0: 11.x requires Dart SDK ^3.8.0, incompatible with
+  # CI's Flutter 3.27.0 (Dart 3.6.0) — same story as go_router/flutter_lints
+  # above. 10.3.1 requires only ^3.3.0. Only the bare default constructor
+  # and read/write/delete (TokenStorage's entire surface, see
+  # lib/core/network/token_storage.dart) are used — unchanged across 10.x/11.x.
+  flutter_secure_storage: ^10.3.1
 
 dev_dependencies:
   flutter_test:
