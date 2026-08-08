@@ -14,7 +14,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import Settings, get_settings
 from app.db.session import get_db_session
 from app.modules.auth.presentation.dependencies import get_current_user_id
-from app.modules.notifications.application.interfaces import NotificationSenderProtocol
+from app.modules.notifications.application.interfaces import (
+    EmailSenderProtocol,
+    NotificationSenderProtocol,
+)
 from app.modules.notifications.application.service import NotificationService
 from app.modules.notifications.domain.entities import (
     DeviceToken,
@@ -29,6 +32,7 @@ from app.modules.notifications.infrastructure.preference_repository import (
     SqlAlchemyNotificationPreferenceRepository,
 )
 from app.modules.notifications.infrastructure.repository import SqlAlchemyNotificationRepository
+from app.modules.notifications.infrastructure.resend_provider import ResendEmailSender
 from app.modules.notifications.presentation.schemas import (
     DeviceTokenResponse,
     NotificationListResponse,
@@ -38,6 +42,7 @@ from app.modules.notifications.presentation.schemas import (
     SetNotificationPreferenceRequest,
     UnregisterDeviceRequest,
 )
+from app.modules.users.infrastructure.repository import SqlAlchemyUserRepository
 
 router = APIRouter(prefix="/api/v1/notifications", tags=["notifications"])
 
@@ -51,11 +56,18 @@ def get_notification_service(
         if settings.fcm_project_id and settings.fcm_credentials_json_path
         else None
     )
+    email_sender: EmailSenderProtocol | None = (
+        ResendEmailSender(settings)
+        if settings.resend_api_key and settings.resend_from_email
+        else None
+    )
     return NotificationService(
         notifications=SqlAlchemyNotificationRepository(session),
         device_tokens=SqlAlchemyDeviceTokenRepository(session),
         preferences=SqlAlchemyNotificationPreferenceRepository(session),
         sender=sender,
+        email_sender=email_sender,
+        users=SqlAlchemyUserRepository(session),
     )
 
 
