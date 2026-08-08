@@ -22,7 +22,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.bootstrap import build_scheduler
-from app.core.config import get_settings
+from app.core.config import assert_safe_for_environment, get_settings
 from app.core.exceptions import DomainError, ErrorResponse
 from app.core.logging import configure_logging, get_logger
 from app.core.metrics import REQUEST_COUNT, REQUEST_LATENCY_SECONDS
@@ -51,6 +51,9 @@ _CSP_EXEMPT_PATHS = frozenset({"/api/docs", "/redoc", "/docs/oauth2-redirect"})
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
+    # Fail loud before accepting a single request, not silently (Band 14) —
+    # see app.core.config.assert_safe_for_environment's own docstring.
+    assert_safe_for_environment(settings)
     configure_logging(debug=settings.app_debug)
     logger.info("app_startup", env=settings.app_env)
 

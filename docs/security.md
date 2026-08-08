@@ -113,6 +113,20 @@ production's `${VAR:?required}`-gated shell environment). Nothing sensitive
 is ever committed — `.env` is gitignored, `.env.example` documents every
 variable with placeholder/empty values only.
 
+**Production startup guard** (found and fixed in a later review pass):
+`JWT_SECRET_KEY` has a development-only default
+(`dev-only-insecure-secret-change-me`, `app/core/config.py`) so a fresh
+clone runs immediately without a `.env`. Nothing previously stopped that
+same default from reaching a real deployment — `docker-compose.prod.yml`'s
+`${VAR:?required}` guard only covers variables it lists, and this app's
+own settings loader has no `required` concept, so a bare `uvicorn`
+process started with `APP_ENV=production` but no `JWT_SECRET_KEY` set
+would have booted anyway, signing every token with a secret that's
+public (committed to this file, this repo's history). `app.main.lifespan`
+now calls `app.core.config.assert_safe_for_environment` on startup, which
+raises `RuntimeError` before the app accepts a single request if
+`APP_ENV=production` and `JWT_SECRET_KEY` is still that default.
+
 ## Dependency vulnerability scanning (new in Task #15)
 
 `.github/workflows/ci.yml` runs `pip-audit -r requirements.txt` on every

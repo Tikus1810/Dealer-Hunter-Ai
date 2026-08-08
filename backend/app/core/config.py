@@ -13,6 +13,10 @@ from functools import lru_cache
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# Named so `Settings.has_insecure_jwt_secret` can compare against it without
+# duplicating the literal — see that property's docstring.
+INSECURE_DEFAULT_JWT_SECRET_KEY = "dev-only-insecure-secret-change-me"
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -39,7 +43,7 @@ class Settings(BaseSettings):
     redis_url: str = Field(default="redis://localhost:6379/0")
 
     # JWT
-    jwt_secret_key: str = Field(default="dev-only-insecure-secret-change-me")
+    jwt_secret_key: str = Field(default=INSECURE_DEFAULT_JWT_SECRET_KEY)
     jwt_algorithm: str = Field(default="HS256")
     jwt_access_token_expire_minutes: int = Field(default=15)
     jwt_refresh_token_expire_days: int = Field(default=30)
@@ -85,8 +89,43 @@ class Settings(BaseSettings):
     def is_production(self) -> bool:
         return self.app_env.lower() == "production"
 
+    @property
+    def has_insecure_jwt_secret(self) -> bool:
+        """True if `JWT_SECRET_KEY` was never overridden from its
+        development-only default. That default is a public string
+        (committed to this file, visible in `docs/deployment.md`, and now
+        in this repo's public GitHub history) — anyone who has read it can
+        forge a valid access token for any user id. Fine in development,
+        a critical vulnerability if it ever reached production, which is
+        exactly what `assert_safe_for_environment` below exists to catch
+        before the app ever accepts a request."""
+        return self.jwt_secret_key == INSECURE_DEFAULT_JWT_SECRET_KEY
+
 
 @lru_cache
 def get_settings() -> Settings:
     """Return a cached Settings singleton (safe: settings are immutable per process)."""
     return Settings()
+
+
+def assert_safe_for_environment(settings: Settings) -> None:
+    """Refuse to start if `settings` would run a production deployment with
+    secrets that were never actually configured (Band 14: Security-Härtung
+    — "fail loud, not silent", the same principle
+    `infra/docker/docker-compose.prod.yml`'s `${VAR:?error message}` guards
+    already apply at the container level, now also enforced at the
+    application level so a misconfigured non-Docker deployment — e.g. a
+    bare `uvicorn` process with `APP_ENV=production` but no `.env` —
+    can't silently boot insecure).
+
+    Called once from `app.main.lifespan` on startup, not at import time
+    (`Settings()`/`get_settings()` must stay side-effect-free so every
+    other module can import `app.core.config` freely — Band 02's
+    layering rule)."""
+    if settings.is_production and settings.has_insecure_jwt_secret:
+        raise RuntimeError(
+            "Refusing to start: APP_ENV=production but JWT_SECRET_KEY is "
+            "still the insecure development default. Set a real "
+            'JWT_SECRET_KEY (e.g. `python -c "import secrets; '
+            'print(secrets.token_urlsafe(64))"`) before deploying.'
+        )
