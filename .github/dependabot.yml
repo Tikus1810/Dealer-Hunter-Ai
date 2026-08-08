@@ -18,8 +18,15 @@ updates:
     schedule:
       interval: weekly
 
-  # No `pub` entry yet: mobile/pubspec.yaml has never been resolved by a
-  # real `flutter pub get` (see mobile/README.md "Status") — adding
-  # automated update PRs against unverified pins would compound that risk
-  # rather than reduce it. Add this once a real Flutter run has confirmed
-  # the current pins actually work.
+  # Added once real: mobile/pubspec.yaml's pins were unverified when this
+  # file was first written (no Flutter SDK in that sandbox) — deferred
+  # then specifically to avoid compounding that risk with automated PRs
+  # against pins nobody had confirmed actually worked. Since resolved:
+  # CI's `flutter` job (pub get/analyze/test) has run against these pins
+  # for real, repeatedly, across several fix rounds (see CLAUDE.md /
+  # docs/branding.md's CI-verification notes) — safe to enable now.
+  - package-ecosystem: pub
+    directory: /mobile
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
