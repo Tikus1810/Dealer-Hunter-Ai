@@ -1,7 +1,7 @@
 """notification device tokens and preferences
 
-Revision ID: 0002_notification_device_tokens_and_preferences
-Revises: 0001_initial_schema
+Revision ID: 0002
+Revises: 0001
 Create Date: 2026-08-06
 
 Adds `device_tokens` (registered FCM push targets) and
@@ -13,6 +13,10 @@ Table definitions here were verified by compiling each SQLAlchemy model's
 DDL against the PostgreSQL dialect (see
 app/modules/notifications/infrastructure/models.py) before being
 transcribed into this migration.
+
+Revision id kept short ("0002", not the full filename) — see 0001's
+docstring for why (Alembic's version-tracking column overflow this id's
+original full-filename form).
 """
 
 from __future__ import annotations
@@ -24,8 +28,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision: str = "0002_notification_device_tokens_and_preferences"
-down_revision: str | None = "0001_initial_schema"
+revision: str = "0002"
+down_revision: str | None = "0001"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

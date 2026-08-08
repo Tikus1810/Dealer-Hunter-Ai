@@ -1,6 +1,6 @@
 """initial schema
 
-Revision ID: 0001_initial_schema
+Revision ID: 0001
 Revises:
 Create Date: 2026-08-05
 
@@ -12,6 +12,15 @@ notifications, analytics_events.
 Table and index definitions here were verified by compiling each SQLAlchemy
 model's DDL against the PostgreSQL dialect (see app/db/models.py for the
 source of truth) before being transcribed into this migration.
+
+Revision id kept short ("0001", not the full filename) — found in a later
+review pass, the first time `alembic upgrade head` ever ran against real
+Postgres: Alembic's `alembic_version.version_num` column defaults to
+VARCHAR(32), and 0002's original full-filename revision id ("0002_
+notification_device_tokens_and_preferences", 49 chars) overflowed it.
+Fixed for both migrations here, before any real deployment ever depended
+on the old ids — the descriptive name still lives in the filename and
+this docstring, just not in the id Alembic stores in the database.
 """
 
 from __future__ import annotations
@@ -23,7 +32,7 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision: str = "0001_initial_schema"
+revision: str = "0001"
 down_revision: str | None = None
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
