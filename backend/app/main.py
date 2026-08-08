@@ -56,6 +56,18 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     assert_safe_for_environment(settings)
     configure_logging(debug=settings.app_debug)
     logger.info("app_startup", env=settings.app_env)
+    if settings.rate_limiting_looks_unsafe_for_production:
+        # Not a hard failure like assert_safe_for_environment above — unlike
+        # an insecure JWT secret, running without rate limiting is a real
+        # operational choice an operator might deliberately make (e.g.
+        # while traffic is still low and RATE_LIMIT_ENABLED's Redis-per-
+        # request cost isn't worth it yet), just one this app has no way to
+        # distinguish from "forgot to turn it on". Loud enough to show up
+        # in production logs either way (Band 14: OWASP API4:2023).
+        logger.warning(
+            "rate_limiting_disabled_in_production",
+            hint="set RATE_LIMIT_ENABLED=true unless this is intentional",
+        )
 
     # Band 13: the marketplace ingestion scheduler (built in Task #5, never
     # had a call site until now) runs as an in-process background loop for

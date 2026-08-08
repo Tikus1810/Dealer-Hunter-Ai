@@ -56,3 +56,20 @@ def test_assert_safe_for_environment_allows_development_with_the_default_secret(
     settings = Settings(app_env="development")
 
     assert_safe_for_environment(settings)  # must not raise — that's what dev is for
+
+
+def test_rate_limiting_looks_unsafe_for_production_true_when_disabled_in_prod() -> None:
+    settings = Settings(app_env="production", rate_limit_enabled=False)
+    assert settings.rate_limiting_looks_unsafe_for_production is True
+
+
+def test_rate_limiting_looks_unsafe_for_production_false_when_enabled() -> None:
+    settings = Settings(app_env="production", rate_limit_enabled=True)
+    assert settings.rate_limiting_looks_unsafe_for_production is False
+
+
+def test_rate_limiting_looks_unsafe_for_production_false_outside_production() -> None:
+    # Off-by-default in dev/test is expected and fine (app/core/rate_limit.py) —
+    # only production without it is the signal worth surfacing.
+    settings = Settings(app_env="development", rate_limit_enabled=False)
+    assert settings.rate_limiting_looks_unsafe_for_production is False

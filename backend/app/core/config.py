@@ -101,6 +101,17 @@ class Settings(BaseSettings):
         before the app ever accepts a request."""
         return self.jwt_secret_key == INSECURE_DEFAULT_JWT_SECRET_KEY
 
+    @property
+    def rate_limiting_looks_unsafe_for_production(self) -> bool:
+        """True if this is a production environment running without rate
+        limiting on the unauthenticated auth endpoints (OWASP API4:2023 —
+        see `app/core/rate_limit.py`). Unlike `has_insecure_jwt_secret`,
+        this is only a *soft* signal — `RATE_LIMIT_ENABLED=false` can be a
+        deliberate operator choice (e.g. traffic still too low for the
+        Redis-per-request cost to be worth it), so `app.main.lifespan`
+        logs a warning on this rather than refusing to start."""
+        return self.is_production and not self.rate_limit_enabled
+
 
 @lru_cache
 def get_settings() -> Settings:
