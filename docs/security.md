@@ -27,6 +27,23 @@ scanning.
   (`AuthService._issue_token_pair`) and revoked the moment it's used to
   get a new pair (`AuthService.refresh`) — a stolen-and-replayed refresh
   token fails on its second use. Logout revokes on demand.
+- **Reuse detection** (found and fixed in a later review pass —
+  previously a replayed token just failed the one request and nothing
+  more): `AuthService.refresh` distinguishes a token that's merely
+  unknown/expired from one that's specifically *already been rotated
+  out* (`RefreshTokenRepositoryProtocol.is_revoked`). The legitimate
+  rotation flow never re-presents a token it already exchanged, so a
+  revoked token being presented again is treated as a compromise signal:
+  every other currently-valid refresh token for that user is revoked too
+  (`revoke_all_for_user`) — logging out every device, not just rejecting
+  the one replayed request, since reuse detection can't tell whether an
+  attacker who captured one token in the chain also captured the ones
+  issued after it. **Known tradeoff**: two genuinely concurrent refresh
+  calls with the same (about-to-be-rotated) token — a client-side race,
+  not an attack — would trigger the same full logout as a real replay;
+  this is the same tradeoff described in most refresh-token-rotation
+  writeups (e.g. Auth0's), accepted here rather than adding request
+  coalescing for a case that shouldn't happen with a well-behaved client.
 - **No user enumeration**: `AuthService.login` raises the same
   `UnauthorizedError("invalid email or password")` whether the email
   doesn't exist or the password is wrong — timing is not equalized (a

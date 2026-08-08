@@ -50,8 +50,14 @@ class FakeRefreshTokenRepository:
     async def is_valid(self, jti: str) -> bool:
         return jti in self.known and jti not in self.revoked
 
+    async def is_revoked(self, jti: str) -> bool:
+        return jti in self.revoked
+
     async def revoke(self, jti: str) -> None:
         self.revoked.add(jti)
+
+    async def revoke_all_for_user(self, user_id: uuid.UUID) -> None:
+        self.revoked.update(jti for jti, owner in self.known.items() if owner == user_id)
 
 
 @pytest.fixture
@@ -122,6 +128,29 @@ async def test_refresh_rotates_token_and_old_one_becomes_invalid(
 
     with pytest.raises(UnauthorizedError):
         await auth.refresh(refresh_token=pair.refresh_token)  # reuse of rotated token
+
+
+async def test_refresh_reuse_of_a_rotated_token_revokes_every_session(
+    service: ServiceFixture,
+) -> None:
+    """Reuse-detection (Band 14): replaying an already-rotated-out refresh
+    token doesn't just fail the one request — it's treated as a signal the
+    token was stolen, so every other still-valid session for that user
+    gets logged out too, not just the replayed one."""
+    auth, _users, tokens = service
+    await auth.register(email="reuse@example.com", password="correcthorse")
+    pair = await auth.login(email="reuse@example.com", password="correcthorse")
+    rotated_pair = await auth.refresh(refresh_token=pair.refresh_token)
+
+    with pytest.raises(UnauthorizedError):
+        await auth.refresh(refresh_token=pair.refresh_token)  # replay the old, rotated token
+
+    # The legitimately-rotated token is now also revoked — reuse detection
+    # can't tell whether the attacker who replayed the old token also has
+    # this one, so it invalidates the whole session rather than gamble.
+    with pytest.raises(UnauthorizedError):
+        await auth.refresh(refresh_token=rotated_pair.refresh_token)
+    assert len(tokens.revoked) == 2  # both tokens for this user, none left valid
 
 
 async def test_logout_revokes_refresh_token(service: ServiceFixture) -> None:

@@ -67,6 +67,42 @@ async def test_register_login_me_refresh_logout_flow(client: AsyncClient) -> Non
     assert reuse_after_logout.status_code == 401
 
 
+async def test_refresh_token_reuse_logs_out_every_session(client: AsyncClient) -> None:
+    """Reuse-detection against the real SqlAlchemyRefreshTokenRepository —
+    the unit-level equivalent (test_auth_service.py) uses an in-memory
+    fake; this exercises the actual `is_revoked`/`revoke_all_for_user` SQL
+    against Postgres."""
+    await client.post(
+        "/api/v1/auth/register",
+        json={"email": "reuse-api@example.com", "password": "correcthorsebattery"},
+    )
+    login = await client.post(
+        "/api/v1/auth/login",
+        json={"email": "reuse-api@example.com", "password": "correcthorsebattery"},
+    )
+    original_refresh_token = login.json()["refresh_token"]
+
+    rotated = await client.post(
+        "/api/v1/auth/refresh", json={"refresh_token": original_refresh_token}
+    )
+    assert rotated.status_code == 200
+    rotated_refresh_token = rotated.json()["refresh_token"]
+
+    # Replay the already-rotated-out original token.
+    replay = await client.post(
+        "/api/v1/auth/refresh", json={"refresh_token": original_refresh_token}
+    )
+    assert replay.status_code == 401
+
+    # The legitimately-rotated token is now also revoked, even though it
+    # was never itself replayed — reuse detection logs out the whole
+    # session rather than gamble on which tokens the attacker also has.
+    also_revoked = await client.post(
+        "/api/v1/auth/refresh", json={"refresh_token": rotated_refresh_token}
+    )
+    assert also_revoked.status_code == 401
+
+
 async def test_me_without_token_is_unauthorized(client: AsyncClient) -> None:
     response = await client.get("/api/v1/users/me")
     assert response.status_code == 401

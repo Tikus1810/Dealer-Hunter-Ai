@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.auth.infrastructure.models import RefreshTokenModel
@@ -29,9 +29,23 @@ class SqlAlchemyRefreshTokenRepository:
             return False
         return row.expires_at > datetime.now(UTC)
 
+    async def is_revoked(self, jti: str) -> bool:
+        stmt = select(RefreshTokenModel.revoked_at).where(RefreshTokenModel.token_jti == jti)
+        revoked_at = (await self._session.execute(stmt)).scalar_one_or_none()
+        return revoked_at is not None
+
     async def revoke(self, jti: str) -> None:
         stmt = select(RefreshTokenModel).where(RefreshTokenModel.token_jti == jti)
         row = (await self._session.execute(stmt)).scalar_one_or_none()
         if row is not None and row.revoked_at is None:
             row.revoked_at = datetime.now(UTC)
             await self._session.flush()
+
+    async def revoke_all_for_user(self, user_id: uuid.UUID) -> None:
+        stmt = (
+            update(RefreshTokenModel)
+            .where(RefreshTokenModel.user_id == user_id, RefreshTokenModel.revoked_at.is_(None))
+            .values(revoked_at=datetime.now(UTC))
+        )
+        await self._session.execute(stmt)
+        await self._session.flush()

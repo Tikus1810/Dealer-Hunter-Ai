@@ -89,13 +89,29 @@ class AuthService:
             raise UnauthorizedError("invalid or expired refresh token") from exc
 
         jti = payload["jti"]
-        if not await self._refresh_tokens.is_valid(jti):
+        user_id = uuid.UUID(payload["sub"])
+
+        # Reuse detection (Band 14): a *revoked* token being presented
+        # again — as opposed to one that simply never existed or expired
+        # — can only happen if someone other than the legitimate client is
+        # replaying a stolen refresh token. The real rotation flow below
+        # never re-presents a token it already exchanged, so this is
+        # treated as a compromise signal: log out every session for this
+        # user, not just reject the one replayed request.
+        if await self._refresh_tokens.is_revoked(jti):
+            await self._refresh_tokens.revoke_all_for_user(user_id)
+            logger.warning("refresh_token_reuse_detected", user_id=str(user_id))
             raise UnauthorizedError("refresh token has been revoked or reused")
 
+        if not await self._refresh_tokens.is_valid(jti):
+            raise UnauthorizedError("invalid or expired refresh token")
+
         # Rotate: each refresh token is single-use. Revoking it here means a
-        # stolen-and-replayed token fails on its second use (Band 14).
+        # stolen-and-replayed token fails on its second use (Band 14) — and
+        # is exactly the "revoked token presented again" case the reuse
+        # check above catches if it ever happens.
         await self._refresh_tokens.revoke(jti)
-        return await self._issue_token_pair(uuid.UUID(payload["sub"]))
+        return await self._issue_token_pair(user_id)
 
     async def logout(self, *, refresh_token: str) -> None:
         try:
