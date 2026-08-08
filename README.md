@@ -9,6 +9,11 @@ Specification source: `Band 1/` … `Band 20/` (see [Band 1](Band%201/Band_01_Ma
 for the master PRD). Each `Band N/` folder is the original spec input and is
 kept as-is for traceability; this repo implements it incrementally.
 
+Contributing to this repo (human or Claude Code)? Read [`CLAUDE.md`](CLAUDE.md)
+first — architecture/module boundaries, naming conventions, quality gates,
+testing conventions and commit conventions, all consolidated from Bands
+1–17's actual implementation history (Band 17: Claude_Context).
+
 ## Repository layout
 
 ```
