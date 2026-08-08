@@ -31,7 +31,14 @@ def test_is_production_false_for_development_env() -> None:
 
 
 def test_has_insecure_jwt_secret_true_for_unconfigured_default() -> None:
-    assert Settings().has_insecure_jwt_secret is True
+    # Explicit, not a bare `Settings()`: pydantic-settings reads
+    # JWT_SECRET_KEY from the real process environment when the field
+    # isn't passed to the constructor, and CI's own `backend` job sets
+    # JWT_SECRET_KEY=ci-test-secret for the *other* tests that need a real
+    # value (see .github/workflows/ci.yml) — a bare `Settings()` here
+    # would silently pick that up instead of the code default and this
+    # assertion would fail in CI while passing locally, which is exactly
+    # what happened the first time this test was written.
     assert Settings(jwt_secret_key=INSECURE_DEFAULT_JWT_SECRET_KEY).has_insecure_jwt_secret is True
 
 
@@ -40,7 +47,10 @@ def test_has_insecure_jwt_secret_false_once_overridden() -> None:
 
 
 def test_assert_safe_for_environment_raises_for_production_with_default_secret() -> None:
-    settings = Settings(app_env="production")
+    # jwt_secret_key passed explicitly — see the comment on
+    # test_has_insecure_jwt_secret_true_for_unconfigured_default above for
+    # why relying on the constructor's own fallback isn't safe here.
+    settings = Settings(app_env="production", jwt_secret_key=INSECURE_DEFAULT_JWT_SECRET_KEY)
 
     with pytest.raises(RuntimeError, match="JWT_SECRET_KEY"):
         assert_safe_for_environment(settings)

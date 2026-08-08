@@ -17,14 +17,22 @@ from __future__ import annotations
 import pytest
 
 from app import main as main_module
-from app.core.config import Settings
+from app.core.config import INSECURE_DEFAULT_JWT_SECRET_KEY, Settings
 from app.main import app, lifespan
 
 
 async def test_lifespan_raises_for_production_with_insecure_jwt_secret(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    settings = Settings(app_env="production")  # default jwt_secret_key = insecure default
+    # jwt_secret_key passed explicitly, not left to Settings()'s own
+    # fallback: pydantic-settings reads JWT_SECRET_KEY from the real
+    # process environment when the field isn't passed, and CI's `backend`
+    # job sets JWT_SECRET_KEY=ci-test-secret for the tests that need a
+    # real value — an implicit default here would silently pick that up
+    # in CI and this test would stop raising (see test_config.py's
+    # matching comment; this exact test failed in CI the first time for
+    # exactly this reason).
+    settings = Settings(app_env="production", jwt_secret_key=INSECURE_DEFAULT_JWT_SECRET_KEY)
     monkeypatch.setattr(main_module, "get_settings", lambda: settings)
 
     with pytest.raises(RuntimeError, match="JWT_SECRET_KEY"):
