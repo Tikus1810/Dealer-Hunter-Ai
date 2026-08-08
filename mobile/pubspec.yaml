@@ -61,7 +61,7 @@ dev_dependencies:
   # (the first real verification this repo's Flutter code ever got). 5.0.0
   # requires only ^3.5.0, satisfied by 3.6.0. Dev-only lint rules, zero
   # runtime impact either way.
-  flutter_lints: ^5.0.0
+  flutter_lints: ^6.0.0
 
 flutter:
   uses-material-design: true
