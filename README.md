@@ -404,6 +404,8 @@ reviewable weights) and closes two concrete gaps Task #17 found:
 
 See the 20 project tasks tracked for this build for current progress
 (foundation → domain modules → API → mobile app → cross-cutting concerns).
+All 20 are now complete — see [docs/roadmap.md](docs/roadmap.md) (Band 20)
+for what comes after the MVP.
 Known gaps carried over from the specification, tracked openly rather than
 papered over with placeholders:
 
