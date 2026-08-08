@@ -333,7 +333,8 @@ recovery — in [docs/deployment.md](docs/deployment.md). Summary:
 
 Full writeup — auth/JWT lifecycle, rate limiting, headers, secrets,
 dependency scanning changelog — in [docs/security.md](docs/security.md).
-Summary of what's new since Task #4's auth work:
+Found a vulnerability? See [SECURITY.md](SECURITY.md) for how to report
+it privately. Summary of what's new since Task #4's auth work:
 
 - **Rate limiting**: Redis-backed fixed-window counter
   (`app/core/rate_limit.py`) on `POST /auth/{login,register,refresh}` —
