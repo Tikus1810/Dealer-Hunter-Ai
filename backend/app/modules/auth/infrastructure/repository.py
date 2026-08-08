@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db.session import session_factory
 from app.modules.auth.infrastructure.models import RefreshTokenModel
 
 
@@ -42,10 +43,27 @@ class SqlAlchemyRefreshTokenRepository:
             await self._session.flush()
 
     async def revoke_all_for_user(self, user_id: uuid.UUID) -> None:
-        stmt = (
-            update(RefreshTokenModel)
-            .where(RefreshTokenModel.user_id == user_id, RefreshTokenModel.revoked_at.is_(None))
-            .values(revoked_at=datetime.now(UTC))
-        )
-        await self._session.execute(stmt)
-        await self._session.flush()
+        """Deliberately uses its own, independently-committed session
+        instead of `self._session` (the ambient request-scoped one this
+        repository otherwise always uses) — a real bug caught by
+        `tests/integration/test_auth_api.py`'s reuse-detection test
+        against real Postgres, not visible against the in-memory unit
+        fake: `AuthService.refresh` calls this and then immediately
+        `raise`s `UnauthorizedError`, and `app.db.session.get_db_session`'s
+        unit-of-work **rolls back the whole request on any raised
+        exception** (see that function's own docstring) — including this
+        one. A same-session call here would have its revocation silently
+        undone the moment the request fails, defeating the entire point
+        of reuse detection. This is a security action that must survive
+        independent of how the enclosing request resolves, the same
+        reasoning `app/bootstrap.py`'s scheduler already uses
+        `session_factory` directly instead of a request-scoped session
+        for its own out-of-request-cycle writes."""
+        async with session_factory() as session:
+            stmt = (
+                update(RefreshTokenModel)
+                .where(RefreshTokenModel.user_id == user_id, RefreshTokenModel.revoked_at.is_(None))
+                .values(revoked_at=datetime.now(UTC))
+            )
+            await session.execute(stmt)
+            await session.commit()
