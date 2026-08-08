@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/error/app_exception.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/widgets/error_view.dart';
 import '../../../core/widgets/loading_view.dart';
@@ -44,7 +45,9 @@ class _DealScoreBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final brightness = theme.brightness;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSpacing.md),
@@ -56,9 +59,9 @@ class _DealScoreBody extends StatelessWidget {
               children: [
                 Text(
                   '${dealScore.score}',
-                  style: Theme.of(context).textTheme.displayMedium?.copyWith(
+                  style: theme.textTheme.displayMedium?.copyWith(
                         fontWeight: FontWeight.bold,
-                        color: _scoreColor(colorScheme, dealScore.score),
+                        color: _scoreColor(colorScheme, brightness, dealScore.score),
                       ),
                 ),
                 Text('von 100 Punkten', style: Theme.of(context).textTheme.bodyMedium),
@@ -106,9 +109,9 @@ class _DealScoreBody extends StatelessWidget {
     );
   }
 
-  Color _scoreColor(ColorScheme colorScheme, int score) {
-    if (score >= 70) return Colors.green.shade700;
-    if (score >= 40) return Colors.orange.shade800;
+  Color _scoreColor(ColorScheme colorScheme, Brightness brightness, int score) {
+    if (score >= 70) return AppColors.positive(brightness);
+    if (score >= 40) return AppColors.warning(brightness);
     return colorScheme.error;
   }
 }
@@ -142,7 +145,9 @@ class _ExplanationTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isPositive = factor.impact >= 0;
-    final color = isPositive ? Colors.green.shade700 : Theme.of(context).colorScheme.error;
+    final color = isPositive
+        ? AppColors.positive(Theme.of(context).brightness)
+        : Theme.of(context).colorScheme.error;
 
     return Card(
       margin: const EdgeInsets.only(bottom: AppSpacing.sm),

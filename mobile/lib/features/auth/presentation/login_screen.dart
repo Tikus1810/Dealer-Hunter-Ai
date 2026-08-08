@@ -6,6 +6,7 @@ import '../../../core/error/app_exception.dart';
 import '../../../core/router/route_paths.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/widgets/app_text_field.dart';
+import '../../../core/widgets/brand_mark.dart';
 import '../../../core/widgets/primary_button.dart';
 import 'auth_providers.dart';
 
@@ -52,6 +53,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  const Center(child: BrandMark()),
+                  const SizedBox(height: AppSpacing.lg),
                   AppTextField(
                     controller: _emailController,
                     label: 'E-Mail',

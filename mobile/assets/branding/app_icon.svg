@@ -1,0 +1,45 @@
+<!--
+  Deal Hunter AI — app icon master (Band 19: Branding).
+
+  This is the SOURCE vector, not a platform app icon file — no
+  android/ios/ folders exist in this repo yet (`flutter create .` has
+  never run against a real Flutter SDK; see mobile/README.md "Status" and
+  docs/branding.md "Future Extension Points"). Once platform folders
+  exist:
+    1. Export this to a 1024x1024 PNG (any SVG rasterizer, e.g.
+       `rsvg-convert -w 1024 -h 1024 app_icon.svg app_icon_1024.png`).
+    2. Add the `flutter_launcher_icons` dev dependency and point its
+       `image_path` at that PNG.
+    3. Run `flutter pub run flutter_launcher_icons` to generate every
+       platform size/format from this one source.
+
+  Design: a magnifying glass (the "hunt") resolving onto a price tag (the
+  "deal") — both drawn in the app's own color tokens
+  (mobile/lib/core/theme/app_colors.dart: seed + positive-light), so a
+  future re-brand that changes those tokens can update this file's two
+  fill colors to match rather than redesigning from scratch.
+-->
+<svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background: rounded square, standard adaptive-icon safe-area shape -->
+  <rect x="0" y="0" width="1024" height="1024" rx="224" fill="#2D6A4F" />
+
+  <!-- Price tag: the "deal" -->
+  <g transform="translate(512 512) rotate(-20) translate(-512 -512)">
+    <path
+      d="M 420 300
+         L 640 300
+         L 760 420
+         L 540 640
+         C 528 652 508 652 496 640
+         L 380 524
+         C 368 512 368 492 380 480
+         Z"
+      fill="#F5F1E8"
+    />
+    <circle cx="470" cy="360" r="34" fill="#2D6A4F" />
+  </g>
+
+  <!-- Magnifying glass: the "hunt" -->
+  <circle cx="620" cy="420" r="150" fill="none" stroke="#81C784" stroke-width="48" />
+  <line x1="722" y1="522" x2="840" y2="640" stroke="#81C784" stroke-width="56" stroke-linecap="round" />
+</svg>

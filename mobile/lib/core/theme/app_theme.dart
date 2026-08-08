@@ -17,12 +17,20 @@ class AppTheme {
 
   static ThemeData _themeFor(Brightness brightness) {
     final colorScheme = ColorScheme.fromSeed(seedColor: AppColors.seed, brightness: brightness);
+    // Only used to read Material 3's default TextTheme so AppTypography.apply
+    // has a base to layer weight/letter-spacing overrides onto below.
+    final baseTextTheme = ThemeData(
+      useMaterial3: true,
+      brightness: brightness,
+      colorScheme: colorScheme,
+    ).textTheme;
 
     return ThemeData(
       useMaterial3: true,
       brightness: brightness,
       colorScheme: colorScheme,
       fontFamily: AppTypography.fontFamily,
+      textTheme: AppTypography.apply(baseTextTheme),
       scaffoldBackgroundColor: colorScheme.surface,
       appBarTheme: AppBarTheme(
         backgroundColor: colorScheme.surface,

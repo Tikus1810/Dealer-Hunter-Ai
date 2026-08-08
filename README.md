@@ -281,8 +281,10 @@ delivery is just skipped, same pattern as the other optional providers.
 
 `mobile/` implements Band 4 end-to-end: feature-first Clean Architecture,
 Riverpod 2.x state management, go_router navigation (auth-gated), a
-Material 3 light/dark design system built from token files, and every
-Band 4 "Core Feature" with real UI wired against the real backend API —
+Material 3 light/dark design system built from token files (brand
+color/typography/app-icon decisions: [docs/branding.md](docs/branding.md),
+Band 19), and every Band 4 "Core Feature" with real UI wired against the
+real backend API —
 Authentication, Dashboard, Search Profiles (full CRUD), Offer List/
 Details, Deal Analysis, Repair Analysis, Favorites, Notifications
 (inbox + preferences), Settings. See [mobile/README.md](mobile/README.md)
