@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -168,7 +169,7 @@ class _RepairReportBody extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.warning_amber_outlined, size: 18),
+                  const Icon(CupertinoIcons.exclamationmark_triangle, size: 16),
                   const SizedBox(width: AppSpacing.xs),
                   Expanded(child: Text(note)),
                 ],

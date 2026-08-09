@@ -9,16 +9,44 @@ class AppColors {
   /// in the app's `ColorScheme` (primary/secondary/tertiary/surface/...)
   /// derives from this one constant, light and dark alike.
   ///
-  /// Final brand color (Band 19), not a placeholder: a deep, muted green.
-  /// "Deal Hunter" is fundamentally about *value found* — money saved,
-  /// devices rescued from landfill instead of bought new — and green reads
-  /// as "savings"/"go" across DACH audiences (this product's actual
-  /// market, see `docs/analytics.md`) without the over-used, fintech-coded
-  /// brightness of a pure `#00C853`-style green. Kept deliberately close to
-  /// its Task #11 draft value (`0xFF2D6A4F`) — that value was already a
-  /// considered choice, not a random placeholder; Band 19's job was to
-  /// confirm and document it as final, not necessarily replace it.
-  static const seed = Color(0xFF2D6A4F);
+  /// **Third design pass ("Onyx + Candy Blue")**: replaces the second
+  /// pass's gold/yellow (still documented below for history, same as that
+  /// pass documented the original green it replaced) — same explicit,
+  /// deliberate-pivot pattern, not a silent overwrite. Apple's own
+  /// `systemBlue` (dark mode, `#0A84FF`) rather than a custom "candy"
+  /// blue: it's already tuned for legibility as body text on a near-black
+  /// surface, which a more saturated/lighter blue usually isn't.
+  ///
+  /// Previous (second pass): a bold gold/yellow, close to Apple's own
+  /// `systemYellow` (`#FFD60A`/`#FFCC00` across iOS versions), chosen when
+  /// the direction was "less Material/Android-coded, more iOS-coded" for
+  /// the whole app. `docs/branding.md` still records the original green
+  /// rationale from the very first pass.
+  static const seed = Color(0xFF0A84FF);
+
+  /// True black ("Onyx") — `AppTheme` now builds *both* its light and dark
+  /// `ThemeData` around this fixed black-background/blue-accent look
+  /// rather than a conventional light/dark pair (see that file). Broken
+  /// out as its own named constant, not just used inline, so anything
+  /// that needs to match the page background exactly (not a
+  /// `colorScheme.surface` tint) has one source of truth. Left as pure
+  /// black on purpose in the third pass — see `surfaceDark` below for
+  /// where the "feels cold" feedback actually got addressed.
+  static const backgroundBlack = Color(0xFF000000);
+
+  /// Cards/sheets/nav-bar surface tone, one layer up from
+  /// `backgroundBlack` (pure black-on-black has no depth cues at all).
+  ///
+  /// **Warmed in the third pass**: was iOS's own neutral `systemGray6`
+  /// dark (`#1C1C1E`, R=G swapped with a cool blue-leaning B channel) —
+  /// direct feedback was that the black/dark-gray combo read as "cold".
+  /// This tone nudges the red channel above the blue channel (R32 vs B26,
+  /// vs. the old tone's R28/B30 — blue *higher* than red) for a slightly
+  /// warm, "onyx" undertone instead of a technical/cool one — subtle on
+  /// purpose: enough to warm the large surface areas (cards, sheets)
+  /// without the app's actual accent color (`seed`, now blue — a cool hue
+  /// by nature) fighting it.
+  static const surfaceDark = Color(0xFF201E1A);
 
   // Semantic status colors — domain meaning (deal-score polarity: a
   // factor/score is *good* or *needs attention*), not brand identity, so

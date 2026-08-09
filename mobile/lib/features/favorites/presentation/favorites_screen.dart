@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -5,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/error/app_exception.dart';
 import '../../../core/router/route_paths.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/widgets/app_content_bounds.dart';
 import '../../../core/widgets/empty_view.dart';
 import '../../../core/widgets/error_view.dart';
 import '../../../core/widgets/loading_view.dart';
@@ -27,27 +29,30 @@ class FavoritesScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Favoriten')),
-      body: favoritesAsync.when(
-        data: (favorites) {
-          if (favorites.isEmpty) {
-            return const EmptyView(
-              icon: Icons.favorite_border,
-              message: 'Noch keine Favoriten gespeichert.',
+      body: AppContentBounds(
+        child: favoritesAsync.when(
+          data: (favorites) {
+            if (favorites.isEmpty) {
+              return const EmptyView(
+                icon: CupertinoIcons.heart,
+                message: 'Noch keine Favoriten gespeichert.',
+              );
+            }
+            return RefreshIndicator(
+              onRefresh: () => ref.read(favoritesControllerProvider.notifier).refresh(),
+              child: ListView.builder(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+                itemCount: favorites.length,
+                itemBuilder: (context, index) => _FavoriteRow(offerId: favorites[index].offerId),
+              ),
             );
-          }
-          return RefreshIndicator(
-            onRefresh: () => ref.read(favoritesControllerProvider.notifier).refresh(),
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
-              itemCount: favorites.length,
-              itemBuilder: (context, index) => _FavoriteRow(offerId: favorites[index].offerId),
-            ),
-          );
-        },
-        loading: () => const LoadingView(),
-        error: (error, stackTrace) => ErrorView(
-          message: _errorMessage(error),
-          onRetry: () => ref.read(favoritesControllerProvider.notifier).refresh(),
+          },
+          loading: () => const LoadingView(),
+          error: (error, stackTrace) => ErrorView(
+            message: _errorMessage(error),
+            onRetry: () => ref.read(favoritesControllerProvider.notifier).refresh(),
+          ),
         ),
       ),
     );
@@ -71,7 +76,7 @@ class _FavoriteRow extends ConsumerWidget {
     return offerAsync.when(
       data: (offer) => OfferCard(
         offer: offer,
-        onTap: () => context.go(RoutePaths.offerDetailPath(offerId)),
+        onTap: () => context.push(RoutePaths.offerDetailPath(offerId)),
       ),
       loading: () => const Card(
         child: Padding(

@@ -1,7 +1,9 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/error/app_exception.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/widgets/app_text_field.dart';
 import '../../../../core/widgets/primary_button.dart';
@@ -142,6 +144,7 @@ class _SearchProfileFormSheetState extends ConsumerState<_SearchProfileFormSheet
               const SizedBox(height: AppSpacing.md),
               DropdownButtonFormField<OfferCategory>(
                 value: _category,
+                icon: const Icon(CupertinoIcons.chevron_down, size: 18),
                 decoration: const InputDecoration(labelText: 'Kategorie'),
                 items: [
                   for (final category in OfferCategory.values)
@@ -180,9 +183,20 @@ class _SearchProfileFormSheetState extends ConsumerState<_SearchProfileFormSheet
                 keyboardType: TextInputType.number,
               ),
               const SizedBox(height: AppSpacing.sm),
-              SwitchListTile(
+              SwitchListTile.adaptive(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Bei Treffern benachrichtigen'),
+                // `Switch.adaptive`'s iOS branch defaults to
+                // `CupertinoColors.systemGreen`, not this app's brand
+                // color — set explicitly so the one Cupertino-native
+                // control on the page still reads as on-brand.
+                //
+                // `activeColor` itself (not `activeThumbColor`/
+                // `activeTrackColor`) deliberately, same reasoning as the
+                // `value:`/`initialValue:` DropdownButtonFormField note
+                // below: CI still pins a Flutter version from before this
+                // param split existed.
+                activeColor: AppColors.seed,
                 value: _notifyOnMatch,
                 onChanged: (value) => setState(() => _notifyOnMatch = value),
               ),

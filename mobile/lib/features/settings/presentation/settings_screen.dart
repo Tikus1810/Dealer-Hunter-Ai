@@ -1,6 +1,8 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/widgets/tap_scale.dart';
 import '../../auth/presentation/auth_providers.dart';
 import '../../notifications/presentation/widgets/notification_preferences_sheet.dart';
 
@@ -17,17 +19,22 @@ class SettingsScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('Einstellungen')),
       body: ListView(
         children: [
-          ListTile(
-            leading: const Icon(Icons.notifications_outlined),
-            title: const Text('Benachrichtigungen'),
-            subtitle: const Text('Push und E-Mail pro Ereignis ein-/ausschalten'),
+          TapScale(
             onTap: () => showNotificationPreferencesSheet(context),
+            child: const ListTile(
+              leading: Icon(CupertinoIcons.bell),
+              title: Text('Benachrichtigungen'),
+              subtitle: Text('Push und E-Mail pro Ereignis ein-/ausschalten'),
+              trailing: Icon(CupertinoIcons.chevron_right, size: 18),
+            ),
           ),
           const Divider(height: 1),
-          ListTile(
-            leading: const Icon(Icons.logout),
-            title: const Text('Abmelden'),
+          TapScale(
             onTap: () => ref.read(authControllerProvider.notifier).logout(),
+            child: const ListTile(
+              leading: Icon(CupertinoIcons.square_arrow_right),
+              title: Text('Abmelden'),
+            ),
           ),
         ],
       ),

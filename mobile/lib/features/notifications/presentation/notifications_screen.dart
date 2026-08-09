@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -22,7 +23,7 @@ class NotificationsScreen extends ConsumerWidget {
         title: const Text('Benachrichtigungen'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.tune),
+            icon: const Icon(CupertinoIcons.slider_horizontal_3),
             tooltip: 'Einstellungen',
             onPressed: () => showNotificationPreferencesSheet(context),
           ),
@@ -32,7 +33,7 @@ class NotificationsScreen extends ConsumerWidget {
         data: (notifications) {
           if (notifications.isEmpty) {
             return const EmptyView(
-              icon: Icons.notifications_outlined,
+              icon: CupertinoIcons.bell,
               message: 'Noch keine Benachrichtigungen.',
             );
           }
@@ -68,7 +69,7 @@ class _NotificationTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return ListTile(
       leading: Icon(
-        notification.isRead ? Icons.mail_outline : Icons.mark_email_unread,
+        notification.isRead ? CupertinoIcons.mail : CupertinoIcons.mail_solid,
         color: notification.isRead ? null : Theme.of(context).colorScheme.primary,
       ),
       title: Text(
@@ -81,7 +82,7 @@ class _NotificationTile extends ConsumerWidget {
       trailing: notification.isRead
           ? null
           : IconButton(
-              icon: const Icon(Icons.check),
+              icon: const Icon(CupertinoIcons.checkmark),
               tooltip: 'Als gelesen markieren',
               onPressed: () =>
                   ref.read(notificationsControllerProvider.notifier).markRead(notification.id),

@@ -1,8 +1,11 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/error/app_exception.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/widgets/app_content_bounds.dart';
+import '../../../core/widgets/app_cupertino_dialog.dart';
 import '../../../core/widgets/empty_view.dart';
 import '../../../core/widgets/error_view.dart';
 import '../../../core/widgets/loading_view.dart';
@@ -24,29 +27,32 @@ class SearchProfilesScreen extends ConsumerWidget {
       floatingActionButton: FloatingActionButton(
         onPressed: () => showSearchProfileFormSheet(context),
         tooltip: 'Neue gespeicherte Suche',
-        child: const Icon(Icons.add),
+        child: const Icon(CupertinoIcons.add),
       ),
-      body: profilesAsync.when(
-        data: (profiles) {
-          if (profiles.isEmpty) {
-            return const EmptyView(
-              icon: Icons.saved_search_outlined,
-              message: 'Noch keine gespeicherten Suchen. Mit "+" eine neue anlegen.',
+      body: AppContentBounds(
+        child: profilesAsync.when(
+          data: (profiles) {
+            if (profiles.isEmpty) {
+              return const EmptyView(
+                icon: CupertinoIcons.bookmark,
+                message: 'Noch keine gespeicherten Suchen. Mit "+" eine neue anlegen.',
+              );
+            }
+            return RefreshIndicator(
+              onRefresh: () => ref.read(searchProfilesControllerProvider.notifier).refresh(),
+              child: ListView.builder(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+                itemCount: profiles.length,
+                itemBuilder: (context, index) => _SearchProfileCard(profile: profiles[index]),
+              ),
             );
-          }
-          return RefreshIndicator(
-            onRefresh: () => ref.read(searchProfilesControllerProvider.notifier).refresh(),
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
-              itemCount: profiles.length,
-              itemBuilder: (context, index) => _SearchProfileCard(profile: profiles[index]),
-            ),
-          );
-        },
-        loading: () => const LoadingView(),
-        error: (error, stackTrace) => ErrorView(
-          message: _errorMessage(error),
-          onRetry: () => ref.read(searchProfilesControllerProvider.notifier).refresh(),
+          },
+          loading: () => const LoadingView(),
+          error: (error, stackTrace) => ErrorView(
+            message: _errorMessage(error),
+            onRetry: () => ref.read(searchProfilesControllerProvider.notifier).refresh(),
+          ),
         ),
       ),
     );
@@ -82,7 +88,7 @@ class _SearchProfileCard extends ConsumerWidget {
           ].join(' · '),
         ),
         trailing: IconButton(
-          icon: const Icon(Icons.delete_outline),
+          icon: const Icon(CupertinoIcons.trash),
           tooltip: 'Löschen',
           onPressed: () => _confirmDelete(context, ref),
         ),
@@ -100,14 +106,21 @@ class _SearchProfileCard extends ConsumerWidget {
   }
 
   Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppCupertinoDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (context) => CupertinoAlertDialog(
         title: const Text('Suche löschen?'),
         content: Text('"${profile.name}" wird endgültig gelöscht.'),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Abbrechen')),
-          TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Löschen')),
+          CupertinoDialogAction(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Abbrechen'),
+          ),
+          CupertinoDialogAction(
+            isDestructiveAction: true,
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Löschen'),
+          ),
         ],
       ),
     );

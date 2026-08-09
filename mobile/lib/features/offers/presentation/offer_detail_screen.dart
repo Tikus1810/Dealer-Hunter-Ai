@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -5,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/error/app_exception.dart';
 import '../../../core/router/route_paths.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/widgets/app_cupertino_dialog.dart';
 import '../../../core/widgets/error_view.dart';
 import '../../../core/widgets/loading_view.dart';
 import '../../../core/widgets/primary_button.dart';
@@ -66,7 +68,7 @@ class _OfferDetailBody extends StatelessWidget {
                   fit: BoxFit.cover,
                   errorBuilder: (context, error, stackTrace) => ColoredBox(
                     color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                    child: const Icon(Icons.broken_image_outlined),
+                    child: const Icon(CupertinoIcons.photo),
                   ),
                 ),
               ),
@@ -85,7 +87,7 @@ class _OfferDetailBody extends StatelessWidget {
             const SizedBox(height: AppSpacing.xs),
             Row(
               children: [
-                const Icon(Icons.place_outlined, size: 18),
+                const Icon(CupertinoIcons.location, size: 18),
                 const SizedBox(width: AppSpacing.xs),
                 Text(offer.location!),
               ],
@@ -113,13 +115,21 @@ class _OfferDetailBody extends StatelessWidget {
                 // v1: no in-app browser/launcher dependency yet — showing
                 // the source URL is the honest placeholder until Task #12's
                 // follow-up wires url_launcher.
-                showDialog<void>(
+                // A native CupertinoAlertDialog here, not a themed Material
+                // AlertDialog — iOS's own two-line-button alert proportions
+                // (rounded top, centered text, hairline-divided actions)
+                // aren't something a Material AlertDialog can be themed
+                // into passably, unlike the app's other surfaces.
+                showAppCupertinoDialog<void>(
                   context: context,
-                  builder: (context) => AlertDialog(
+                  builder: (context) => CupertinoAlertDialog(
                     title: const Text('Original-Angebot'),
-                    content: SelectableText(offer.url),
+                    content: Padding(
+                      padding: const EdgeInsets.only(top: AppSpacing.sm),
+                      child: SelectableText(offer.url),
+                    ),
                     actions: [
-                      TextButton(
+                      CupertinoDialogAction(
                         onPressed: () => Navigator.of(context).pop(),
                         child: const Text('Schließen'),
                       ),
@@ -127,7 +137,7 @@ class _OfferDetailBody extends StatelessWidget {
                   ),
                 );
               },
-              icon: const Icon(Icons.open_in_new),
+              icon: const Icon(CupertinoIcons.arrow_up_right),
               label: const Text('Original-Angebot anzeigen'),
             ),
           ),

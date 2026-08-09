@@ -40,7 +40,10 @@ from app.modules.notifications.infrastructure.resend_provider import ResendEmail
 from app.modules.offers.domain.entities import OfferCategory
 from app.modules.offers.infrastructure.normalizer import OfferNormalizer
 from app.modules.offers.infrastructure.providers.ebay_api import EbayApiProvider
-from app.modules.offers.infrastructure.providers.kleinanzeigen import KleinanzeigenProvider
+from app.modules.offers.infrastructure.providers.kleinanzeigen import (
+    DEFECT_SEARCH_QUERIES,
+    KleinanzeigenProvider,
+)
 from app.modules.offers.infrastructure.repository import SqlAlchemyOfferRepository
 from app.modules.offers.infrastructure.scheduler import AsyncIntervalScheduler, ScheduledJob
 from app.modules.offers.infrastructure.validator import OfferValidator
@@ -117,7 +120,15 @@ def build_scheduler(settings: Settings) -> AsyncIntervalScheduler | None:
 
     if settings.kleinanzeigen_provider_enabled:
         kleinanzeigen = KleinanzeigenProvider(settings)
-        jobs.extend(ScheduledJob(provider=kleinanzeigen, category=c) for c in _ALL_CATEGORIES)
+        # One job per (category, defect query) pair, not one per category —
+        # the app's actual focus is finding broken devices to repair, not
+        # working ones (product decision, see `DEFECT_SEARCH_QUERIES`'s own
+        # docstring for why some categories run more than one query).
+        jobs.extend(
+            ScheduledJob(provider=kleinanzeigen, category=category, query=query)
+            for category in _ALL_CATEGORIES
+            for query in DEFECT_SEARCH_QUERIES[category]
+        )
 
     if not jobs:
         logger.warning(

@@ -1,6 +1,8 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/widgets/tap_scale.dart';
 import '../../domain/offer.dart';
 
 /// One offer's list-row representation — used by the offer list and (via
@@ -16,11 +18,10 @@ class OfferCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final imageUrl = offer.images.isNotEmpty ? offer.images.first : null;
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+    return TapScale(
+      onTap: onTap,
+      child: Card(
+        margin: const EdgeInsets.only(bottom: AppSpacing.sm),
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.sm),
           child: Row(
@@ -34,7 +35,7 @@ class OfferCard extends StatelessWidget {
                       ? ColoredBox(
                           color: Theme.of(context).colorScheme.surfaceContainerHighest,
                           child: Icon(
-                            Icons.image_not_supported_outlined,
+                            CupertinoIcons.photo,
                             color: Theme.of(context).colorScheme.outline,
                           ),
                         )
@@ -44,7 +45,7 @@ class OfferCard extends StatelessWidget {
                           errorBuilder: (context, error, stackTrace) => ColoredBox(
                             color: Theme.of(context).colorScheme.surfaceContainerHighest,
                             child: Icon(
-                              Icons.broken_image_outlined,
+                              CupertinoIcons.photo,
                               color: Theme.of(context).colorScheme.outline,
                             ),
                           ),
@@ -80,7 +81,11 @@ class OfferCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right),
+              Icon(
+                CupertinoIcons.chevron_right,
+                size: 18,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ],
           ),
         ),

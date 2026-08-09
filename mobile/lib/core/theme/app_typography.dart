@@ -5,18 +5,29 @@ import 'package:flutter/material.dart';
 class AppTypography {
   const AppTypography._();
 
-  /// `null` — Material 3's platform default (Roboto on Android, San
-  /// Francisco on iOS). Final decision (Band 19), not a deferred one:
-  /// this app has no licensed custom typeface, and every custom-font
-  /// route available without one adds a real, unverifiable-in-this-
-  /// sandbox risk — either a new pub dependency (`google_fonts`, which
-  /// fetches font files over the network at runtime) or bundled font
-  /// binaries this environment has no way to source or license-check.
-  /// Platform-native type also reads as more trustworthy for a
-  /// "is this deal legit" product, and costs nothing in load time/APK
-  /// size. Revisit only alongside a real brand refresh with licensed
-  /// font files in hand — not as a follow-up task by itself.
-  static const String? fontFamily = null;
+  /// "Space Grotesk" (Band 19: Branding, third design pass — explicit
+  /// pivot from the `null`/platform-default decision below, kept for
+  /// history).
+  ///
+  /// Bundled locally (`assets/fonts/space_grotesk/`, declared in
+  /// `pubspec.yaml`), not fetched via the `google_fonts` pub package —
+  /// same reasoning as `BrandMark`'s "no `flutter_svg` dependency" note:
+  /// one small addition doesn't justify a new pub dependency with its own
+  /// version-compatibility risk, and `google_fonts` fetches over the
+  /// network at runtime by default, which a bundled asset avoids
+  /// entirely (no first-launch font flash, works offline). OFL-licensed
+  /// (Google Fonts' own distribution, `assets/fonts/space_grotesk/
+  /// OFL.txt`), free to bundle and redistribute.
+  ///
+  /// **Previous decision (kept for history)**: `null` — Material 3's
+  /// platform default (Roboto on Android, San Francisco on iOS). The
+  /// original reasoning doesn't apply once the font is actually in hand
+  /// (sourced from Google Fonts' own repo, license included) rather than
+  /// hypothetical — the real remaining tradeoff is platform-native type
+  /// reading as slightly more "trustworthy" for a deal-listing product,
+  /// which was an explicit, deliberate one to accept for a distinctive
+  /// brand look instead.
+  static const String fontFamily = 'Space Grotesk';
 
   /// Weight/spacing overrides layered onto Material 3's default type
   /// scale, applied in [AppTheme]. Keeps the platform font but gives the

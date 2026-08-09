@@ -52,6 +52,24 @@ dependencies:
   # lib/core/network/token_storage.dart) are used — unchanged across 10.x/11.x.
   flutter_secure_storage: ^10.3.1
 
+  # SF Symbols-style icon glyphs for the Apple-style redesign pass —
+  # `CupertinoIcons` (the Dart class) ships inside the Flutter SDK itself,
+  # but this package supplies the actual icon font asset it points at;
+  # without it, CupertinoIcons.* render as empty glyphs. 1.0.8 only needs
+  # Dart SDK >=2.12.0, well under CI's Flutter 3.27.0/Dart 3.6.0 floor —
+  # no repeat of the go_router/flutter_secure_storage pin issue.
+  cupertino_icons: ^1.0.8
+
+  # Renders `assets/branding/wolf_howl.svg` (BrandMark, Band 19: Branding,
+  # third design pass) — the exact scenario `BrandMark`'s own docstring
+  # flagged as "revisit once the SVG asset is actually needed for more
+  # than this": actual illustrative artwork, not a shape `Container`/
+  # `Transform` can reasonably hand-draw. 2.2.1 needs only Dart SDK
+  # >=3.4.0, satisfied by CI's Flutter 3.27.0 (Dart 3.6.0) — verified via
+  # `flutter pub get`/`analyze`/`test` immediately after adding this, not
+  # guessed from pub.dev's per-version metadata (see CLAUDE.md).
+  flutter_svg: ^2.2.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -65,3 +83,29 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  # `BrandMark`'s SVG mark (see the flutter_svg dependency note above)
+  # plus the original placeholder `app_icon.svg` it was drawn from.
+  assets:
+    - assets/branding/wolf_howl.svg
+
+  # Space Grotesk (Band 19: Branding, third design pass) — see
+  # AppTypography.fontFamily's docstring for why a custom font wasn't
+  # used before this and what changed. One variable-font file bound to
+  # several `weight:` entries: Flutter reads the file's `wght` axis to
+  # render each weight correctly, so this isn't five separate font files.
+  # OFL-licensed (Google Fonts, `assets/fonts/space_grotesk/OFL.txt`),
+  # free to bundle and redistribute.
+  fonts:
+    - family: Space Grotesk
+      fonts:
+        - asset: assets/fonts/space_grotesk/SpaceGrotesk-Variable.ttf
+          weight: 300
+        - asset: assets/fonts/space_grotesk/SpaceGrotesk-Variable.ttf
+          weight: 400
+        - asset: assets/fonts/space_grotesk/SpaceGrotesk-Variable.ttf
+          weight: 500
+        - asset: assets/fonts/space_grotesk/SpaceGrotesk-Variable.ttf
+          weight: 600
+        - asset: assets/fonts/space_grotesk/SpaceGrotesk-Variable.ttf
+          weight: 700

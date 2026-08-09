@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -5,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/error/app_exception.dart';
 import '../../../core/router/route_paths.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/widgets/app_content_bounds.dart';
 import '../../../core/widgets/empty_view.dart';
 import '../../../core/widgets/error_view.dart';
 import '../../../core/widgets/loading_view.dart';
@@ -24,47 +26,55 @@ class OfferListScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Angebote')),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.md,
-              AppSpacing.md,
-              AppSpacing.md,
-              AppSpacing.sm,
-            ),
-            child: DropdownButtonFormField<OfferCategory>(
-              value: selectedCategory,
-              decoration: const InputDecoration(labelText: 'Kategorie'),
-              items: [
-                for (final category in OfferCategory.values)
-                  DropdownMenuItem(value: category, child: Text(category.label)),
-              ],
-              onChanged: (category) {
-                if (category == null) return;
-                ref.read(selectedOfferCategoryProvider.notifier).state = category;
-                ref.read(offerListPageProvider.notifier).state = 1;
-              },
-            ),
-          ),
-          Expanded(
-            child: offerPageAsync.when(
-              data: (page) => _OfferListBody(page: page),
-              loading: () => const LoadingView(),
-              error: (error, stackTrace) => ErrorView(
-                message: _errorMessage(error),
-                onRetry: () => ref.invalidate(offerListProvider),
+      body: AppContentBounds(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.md,
+                AppSpacing.md,
+                AppSpacing.md,
+                AppSpacing.sm,
+              ),
+              child: DropdownButtonFormField<OfferCategory>(
+                value: selectedCategory,
+                // Not a change to the deprecated `value:`/`initialValue:`
+                // param itself (see CLAUDE.md — CI still pins a Flutter
+                // version without `initialValue:`), just the dropdown's own
+                // caret glyph so it doesn't stand out as the one obviously
+                // Material-styled control on the page.
+                icon: const Icon(CupertinoIcons.chevron_down, size: 18),
+                decoration: const InputDecoration(labelText: 'Kategorie'),
+                items: [
+                  for (final category in OfferCategory.values)
+                    DropdownMenuItem(value: category, child: Text(category.label)),
+                ],
+                onChanged: (category) {
+                  if (category == null) return;
+                  ref.read(selectedOfferCategoryProvider.notifier).state = category;
+                  ref.read(offerListPageProvider.notifier).state = 1;
+                },
               ),
             ),
-          ),
-          Consumer(
-            builder: (context, ref, _) {
-              final page = ref.watch(offerListProvider).valueOrNull;
-              if (page == null) return const SizedBox.shrink();
-              return _PaginationBar(page: page);
-            },
-          ),
-        ],
+            Expanded(
+              child: offerPageAsync.when(
+                data: (page) => _OfferListBody(page: page),
+                loading: () => const LoadingView(),
+                error: (error, stackTrace) => ErrorView(
+                  message: _errorMessage(error),
+                  onRetry: () => ref.invalidate(offerListProvider),
+                ),
+              ),
+            ),
+            Consumer(
+              builder: (context, ref, _) {
+                final page = ref.watch(offerListProvider).valueOrNull;
+                if (page == null) return const SizedBox.shrink();
+                return _PaginationBar(page: page);
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -84,7 +94,7 @@ class _OfferListBody extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     if (page.items.isEmpty) {
       return const EmptyView(
-        icon: Icons.local_offer_outlined,
+        icon: CupertinoIcons.tag,
         message: 'Keine Angebote in dieser Kategorie gefunden.',
       );
     }
@@ -97,7 +107,7 @@ class _OfferListBody extends ConsumerWidget {
           final offer = page.items[index];
           return OfferCard(
             offer: offer,
-            onTap: () => context.go(RoutePaths.offerDetailPath(offer.id)),
+            onTap: () => context.push(RoutePaths.offerDetailPath(offer.id)),
           );
         },
       ),
@@ -121,14 +131,14 @@ class _PaginationBar extends ConsumerWidget {
             onPressed: page.hasPreviousPage
                 ? () => ref.read(offerListPageProvider.notifier).state--
                 : null,
-            icon: const Icon(Icons.chevron_left),
+            icon: const Icon(CupertinoIcons.chevron_left),
             label: const Text('Zurück'),
           ),
           Text('Seite ${page.page}'),
           TextButton.icon(
             onPressed:
                 page.hasNextPage ? () => ref.read(offerListPageProvider.notifier).state++ : null,
-            icon: const Icon(Icons.chevron_right),
+            icon: const Icon(CupertinoIcons.chevron_right),
             label: const Text('Weiter'),
           ),
         ],

@@ -59,6 +59,24 @@ _CATEGORY_QUERY: dict[OfferCategory, str] = {
     OfferCategory.GAME_CONSOLE: "spielekonsole",
 }
 
+# The app's actual focus (product decision, not a spec default): find
+# broken devices to repair and resell, not working ones — so ingestion
+# searches for the defect itself, not the device alone. One category can
+# map to several queries (e.g. MacBook/iPhone: display *or* battery
+# damage specifically, not defects in general — a deliberate narrower
+# choice than "defekt" catches, since those two repair categories are
+# the cheap/reliable ones; water damage and logic-board failures are
+# excluded on purpose). `bootstrap.build_scheduler` schedules one job per
+# (category, query) pair from this, instead of the single generic
+# `_CATEGORY_QUERY` term above (which is still the `search()` default
+# when no explicit query is given, e.g. ad-hoc/manual calls).
+DEFECT_SEARCH_QUERIES: dict[OfferCategory, list[str]] = {
+    OfferCategory.WINDOWS_LAPTOP: ["laptop defekt"],
+    OfferCategory.MACBOOK: ["macbook display defekt", "macbook akku defekt"],
+    OfferCategory.IPHONE: ["iphone display defekt", "iphone akku defekt"],
+    OfferCategory.GAME_CONSOLE: ["spielekonsole defekt"],
+}
+
 
 class KleinanzeigenDisabledError(Exception):
     """Raised when `search()` is called without the provider being enabled."""
@@ -204,6 +222,23 @@ class KleinanzeigenProvider:
     async def _get(self, url: str) -> str:
         await self._ensure_allowed(url)
         await self._throttle()
+        # A real bug found running this against the live site for the
+        # first time (2026-08-09): the scheduler runs all 4 categories
+        # through one shared client, and every search after the first came
+        # back HTTP 200 with a validly-shaped but *empty* results page —
+        # no robots.txt block, no non-2xx status, so nothing here
+        # previously caught it, and neither the request rate nor
+        # connection reuse turned out to be the cause (both were tried and
+        # ruled out first). Reproduced directly: replaying the same two
+        # requests with `curl -c/-b` (a shared cookie jar, nothing else in
+        # common) shows the *second* search comes back empty; the same
+        # request alone, cookie-less, returns real listings every time.
+        # So it's the session cookie the first response sets, not
+        # anything about the request itself — clearing the jar before
+        # every search keeps each one looking like an independent visit,
+        # without changing what's requested, how often, or which headers
+        # are sent.
+        self._client.cookies.clear()
         return await self._get_with_retry(url)
 
     @retry(

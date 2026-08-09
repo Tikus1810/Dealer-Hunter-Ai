@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -153,7 +154,7 @@ class _ExplanationTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: ListTile(
         leading: Icon(
-          isPositive ? Icons.arrow_upward : Icons.arrow_downward,
+          isPositive ? CupertinoIcons.arrow_up : CupertinoIcons.arrow_down,
           color: color,
         ),
         title: Text(_humanizeFactorName(factor.name)),

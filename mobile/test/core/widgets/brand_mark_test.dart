@@ -1,15 +1,25 @@
 import 'package:deal_hunter_ai/core/widgets/brand_mark.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   Widget wrap(Widget child) => MaterialApp(home: Scaffold(body: child));
 
-  testWidgets('renders the search icon and the percent badge', (tester) async {
+  testWidgets('renders the wolf mark and the AI spark badge', (tester) async {
     await tester.pumpWidget(wrap(const BrandMark()));
+    // SvgPicture loads its asset asynchronously even for a bundled asset
+    // — one pump lets that first frame settle before asserting.
+    await tester.pump();
 
-    expect(find.byIcon(Icons.search), findsOneWidget);
-    expect(find.byIcon(Icons.percent), findsOneWidget);
+    // The wolf is real vector artwork (see brand_mark.dart's docstring on
+    // why an SVG asset now, not hand-drawn shapes), and the AI-spark
+    // badge is a hand-drawn CustomPainter, not a second asset. Asserting
+    // on widget *types* here, not the specific asset path/shape, so this
+    // test survives another "swap the mark" pass like this file's own
+    // history already had once.
+    expect(find.byType(SvgPicture), findsOneWidget);
+    expect(find.byType(CustomPaint), findsWidgets);
   });
 
   testWidgets('lays out at the given size', (tester) async {

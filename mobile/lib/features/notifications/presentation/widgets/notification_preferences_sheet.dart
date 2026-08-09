@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/widgets/loading_view.dart';
 import '../../domain/notification_preference.dart';
@@ -42,9 +43,15 @@ class _NotificationPreferencesSheet extends ConsumerWidget {
               for (final event in NotificationEvents.all) ...[
                 Text(NotificationEvents.label(event), style: Theme.of(context).textTheme.titleSmall),
                 for (final channel in NotificationChannels.all)
-                  SwitchListTile(
+                  SwitchListTile.adaptive(
                     contentPadding: EdgeInsets.zero,
                     title: Text(NotificationChannels.label(channel)),
+                    // See search_profile_form_sheet.dart's identical
+                    // override (including why it's `activeColor`, not the
+                    // newer split `activeThumbColor`/`activeTrackColor`):
+                    // the iOS-branch adaptive switch defaults to system
+                    // green, not the app's brand yellow.
+                    activeColor: AppColors.seed,
                     value: controller.isEnabled(event, channel),
                     onChanged: (value) => controller.setEnabled(event, channel, value),
                   ),

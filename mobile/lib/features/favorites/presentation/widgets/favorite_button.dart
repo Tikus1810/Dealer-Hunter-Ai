@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -20,7 +21,7 @@ class FavoriteButton extends ConsumerWidget {
 
     return IconButton(
       tooltip: isFavorited ? 'Von Favoriten entfernen' : 'Zu Favoriten hinzufügen',
-      icon: Icon(isFavorited ? Icons.favorite : Icons.favorite_border),
+      icon: Icon(isFavorited ? CupertinoIcons.heart_fill : CupertinoIcons.heart),
       color: isFavorited ? Theme.of(context).colorScheme.error : null,
       onPressed: isBusy
           ? null
