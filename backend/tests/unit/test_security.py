@@ -68,6 +68,21 @@ def test_refresh_token_rejected_as_access_token(settings: Settings) -> None:
 
 def test_tampered_token_is_rejected(settings: Settings) -> None:
     token = create_token(subject="user-123", token_type=TokenType.ACCESS, settings=settings)
-    tampered = token[:-1] + ("A" if token[-1] != "A" else "B")
+    header, payload, signature = token.split(".")
+    # Flip a character in the *middle* of the payload segment, not the
+    # last character of the whole token (found flaky by a later review
+    # pass — failed ~1 run in 10 when re-run repeatedly): the last
+    # base64url character of a segment can encode padding-only bits a
+    # decoder ignores, so a last-character flip sometimes decodes back to
+    # bit-for-bit identical bytes and the signature still verifies —
+    # whether it does depends on the random `jti` each token carries, so
+    # it wasn't reliably reproducible from a single run. A middle-of-
+    # segment character has no such padding ambiguity: changing it always
+    # changes the decoded bytes, which always invalidates the signature.
+    mid = len(payload) // 2
+    flipped_char = "A" if payload[mid] != "A" else "B"
+    tampered_payload = payload[:mid] + flipped_char + payload[mid + 1 :]
+    tampered = f"{header}.{tampered_payload}.{signature}"
+
     with pytest.raises(InvalidTokenError):
         decode_token(tampered, settings=settings, expected_type=TokenType.ACCESS)

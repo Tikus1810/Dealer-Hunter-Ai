@@ -244,9 +244,11 @@ templates (`domain/templates.py`, German-only for now — this product's
 actual market), preferences (`domain/preferences.py`: opt-out model, a user
 only needs a row for what they've turned *off*), `NotificationService`
 (persists a `Notification` per enabled channel — the audit log — then
-best-effort pushes via FCM), and `FcmNotificationSender`
+best-effort delivers via FCM/Resend), `FcmNotificationSender`
 (`infrastructure/fcm_provider.py`, wraps `firebase_admin.messaging.send` in
-`asyncio.to_thread` since the SDK has no native async support).
+`asyncio.to_thread` since the SDK has no native async support), and
+`ResendEmailSender` (`infrastructure/resend_provider.py`, calls Resend's
+REST API directly via `httpx` — no SDK dependency for one endpoint).
 
 **Event routing:** `SavedSearchMatchNotifier`
 (`application/match_notifier.py`) implements `OfferPersistedHookProtocol`
@@ -268,14 +270,13 @@ unregister an FCM device token), `GET /api/v1/notifications` (paginated
 inbox), `POST /api/v1/notifications/{id}/read`, `GET`/`PUT
 /api/v1/notifications/preferences`. All user-scoped, all require auth.
 
-**Only PUSH is actually delivered in v1** — Band 11 lists EMAIL as a
-channel too, but this task's scope was FCM specifically. An EMAIL-channel
-notification is still recorded (satisfying the audit-log requirement),
-just not sent anywhere yet; that's a documented gap, not a silent one.
-
-Without `FCM_PROJECT_ID`/`FCM_CREDENTIALS_JSON_PATH` set, notifications
-still work end-to-end (persisted, listed, marked read, preferences) — push
-delivery is just skipped, same pattern as the other optional providers.
+**Both PUSH and EMAIL are delivered when configured** (found and closed
+in a later review pass — EMAIL was previously recorded but never sent).
+Without `FCM_PROJECT_ID`/`FCM_CREDENTIALS_JSON_PATH` or
+`RESEND_API_KEY`/`RESEND_FROM_EMAIL` set, notifications still work
+end-to-end (persisted, listed, marked read, preferences) — delivery on
+that channel is just skipped, same pattern as every other optional
+provider in this codebase (eBay, Claude Vision).
 
 ## Flutter App (Band 4 / Band 18)
 
@@ -416,11 +417,14 @@ papered over with placeholders:
   CAPTCHAs. Get legal sign-off before enabling it in production
   (`KLEINANZEIGEN_PROVIDER_ENABLED` defaults to `false`).
 - **`FCM_PROJECT_ID`/`FCM_CREDENTIALS_JSON_PATH`** are needed for
-  `FcmNotificationSender` to actually deliver pushes — until then,
-  notifications are still created/listed/preferenced normally, just never
-  pushed to a device. Fully tested against a fake `send_fn` seam
-  (`tests/unit/test_fcm_provider.py`) but unverified against the live FCM
-  API, same pattern as the eBay/Claude providers above. `AsyncIntervalScheduler`
+  `FcmNotificationSender` to actually deliver pushes, and
+  **`RESEND_API_KEY`/`RESEND_FROM_EMAIL`** for `ResendEmailSender` to
+  deliver emails — until then, notifications are still created/listed/
+  preferenced normally, just never delivered on that channel. Both fully
+  tested against fakes/mocked HTTP (`tests/unit/test_fcm_provider.py`,
+  `tests/unit/test_resend_provider.py`) but unverified against the live
+  FCM/Resend APIs, same pattern as the eBay/Claude providers above.
+  `AsyncIntervalScheduler`
   now does start from `app/main.py` (via `app/bootstrap.py`, Task #14) —
   but it's off by default (`SCHEDULER_ENABLED=false`) and, even enabled,
   produces no jobs without real `EBAY_CLIENT_ID`/`EBAY_CLIENT_SECRET` or

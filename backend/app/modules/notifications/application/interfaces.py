@@ -30,6 +30,22 @@ class NotificationSenderProtocol(Protocol):
     ) -> None: ...
 
 
+class EmailSenderProtocol(Protocol):
+    """Infrastructure port implemented by the Resend adapter (Band 11).
+
+    A separate protocol from `NotificationSenderProtocol` (push) rather
+    than one sender with two methods: each channel's provider adapter
+    only implements what it actually can, and swapping one channel's
+    provider (e.g. Resend for another email API later) never touches the
+    other channel's interface.
+
+    Raises `EmailDeliveryError` (app.modules.notifications.infrastructure.
+    resend_provider) for any failure — the caller may retry (Band 11:
+    delivery retries)."""
+
+    async def send_email(self, *, to: str, subject: str, body: str) -> None: ...
+
+
 class DeviceTokenRepositoryProtocol(Protocol):
     async def register(self, device_token: DeviceToken) -> DeviceToken:
         """Idempotent on `token`: registering an already-known token again

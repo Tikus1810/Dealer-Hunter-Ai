@@ -60,11 +60,11 @@ originally built for.
    condition" and "common faults" mean differs enough (a laptop's
    battery-cycle count vs. a game console's disc-drive noise) that this
    is N small research+content tasks, not one generic one.
-2. **EMAIL notification channel** — already modeled (Task #10:
-   `NotificationSenderProtocol`, `Notification` persisted per channel
-   regardless of delivery), just never implemented. Needs an SMTP
-   provider decision from the user (documented as open since Task #10)
-   before it's more than a stub `EmailNotificationSender`.
+2. ~~**EMAIL notification channel**~~ — **done** (post-MVP review pass,
+   2026-08-09): `ResendEmailSender` implements `EmailSenderProtocol`,
+   wired the same optional/best-effort way as FCM. Kept here struck
+   through rather than deleted, as a record that this roadmap is a living
+   document, not a fixed backlog.
 3. **Automatic retention job** for analytics purge — `scripts/
    purge_analytics_events.py` (Task #16) exists and is manual; wiring it
    into `AsyncIntervalScheduler` (the same scheduler Band 07/Task #14
@@ -209,7 +209,7 @@ a given item:
 | Future item | Extension point | Status |
 |---|---|---|
 | New device category | `OfferCategory` enum + per-module analyzer profile | Interface exists |
-| EMAIL notifications | `NotificationSenderProtocol` | Interface exists, unimplemented |
+| EMAIL notifications | `EmailSenderProtocol` (`ResendEmailSender`) | Done (2026-08-09) |
 | Analytics retention job | `AsyncIntervalScheduler` job registration | Interface exists |
 | New DealBrain/RepairBrain analyzers | `AnalyzerProtocol` → `ScoringEngine` | Interface exists |
 | Collaboration features | New `modules/collaboration/` bounded context | Needs new module |

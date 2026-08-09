@@ -7,10 +7,10 @@ ingestion scheduler (`app.modules.offers.infrastructure.scheduler.
 AsyncIntervalScheduler`, built in Band 07/Task #5 but never started — no
 call site existed until now) is exactly that case: it needs to be built
 once at process startup and stopped at shutdown. This module is the one
-place allowed to import concrete infrastructure from three different
-modules (offers, search, notifications) to wire that up; nothing inside
-those modules imports across module boundaries directly (Band 02 rule
-still holds — this file sits above all of them).
+place allowed to import concrete infrastructure from four different
+modules (offers, search, notifications, users) to wire that up; nothing
+inside those modules imports across module boundaries directly (Band 02
+rule still holds — this file sits above all of them).
 """
 
 from __future__ import annotations
@@ -22,7 +22,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import Settings
 from app.core.logging import get_logger
 from app.db.session import session_factory
-from app.modules.notifications.application.interfaces import NotificationSenderProtocol
+from app.modules.notifications.application.interfaces import (
+    EmailSenderProtocol,
+    NotificationSenderProtocol,
+)
 from app.modules.notifications.application.match_notifier import SavedSearchMatchNotifier
 from app.modules.notifications.application.service import NotificationService
 from app.modules.notifications.infrastructure.device_token_repository import (
@@ -33,6 +36,7 @@ from app.modules.notifications.infrastructure.preference_repository import (
     SqlAlchemyNotificationPreferenceRepository,
 )
 from app.modules.notifications.infrastructure.repository import SqlAlchemyNotificationRepository
+from app.modules.notifications.infrastructure.resend_provider import ResendEmailSender
 from app.modules.offers.domain.entities import OfferCategory
 from app.modules.offers.infrastructure.normalizer import OfferNormalizer
 from app.modules.offers.infrastructure.providers.ebay_api import EbayApiProvider
@@ -43,6 +47,7 @@ from app.modules.offers.infrastructure.validator import OfferValidator
 from app.modules.scoring.infrastructure.repository import SqlAlchemyDealScoreRepository
 from app.modules.search.application.service import SearchService
 from app.modules.search.infrastructure.repository import SqlAlchemySearchProfileRepository
+from app.modules.users.infrastructure.repository import SqlAlchemyUserRepository
 
 logger = get_logger(__name__)
 
@@ -68,11 +73,18 @@ def _build_hook_factory(
             if settings.fcm_project_id and settings.fcm_credentials_json_path
             else None
         )
+        email_sender: EmailSenderProtocol | None = (
+            ResendEmailSender(settings)
+            if settings.resend_api_key and settings.resend_from_email
+            else None
+        )
         notifications = NotificationService(
             notifications=SqlAlchemyNotificationRepository(session),
             device_tokens=SqlAlchemyDeviceTokenRepository(session),
             preferences=SqlAlchemyNotificationPreferenceRepository(session),
             sender=sender,
+            email_sender=email_sender,
+            users=SqlAlchemyUserRepository(session),
         )
         matcher = SearchService(
             profiles=SqlAlchemySearchProfileRepository(session),

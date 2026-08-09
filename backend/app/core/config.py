@@ -64,6 +64,13 @@ class Settings(BaseSettings):
     fcm_project_id: str = Field(default="")
     fcm_credentials_json_path: str = Field(default="")
 
+    # Resend (Band 11: EMAIL notification channel). Optional, same pattern
+    # as FCM above — EMAIL notifications stay recorded-but-not-sent until
+    # both are set (see notifications/presentation/router.py's
+    # get_notification_service).
+    resend_api_key: str = Field(default="")
+    resend_from_email: str = Field(default="")
+
     # Claude Vision API (Band 08: cosmetic-condition detection)
     # Optional — cosmetic_condition stays "not_available" until this is set.
     anthropic_api_key: str = Field(default="")

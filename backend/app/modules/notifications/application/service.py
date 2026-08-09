@@ -4,13 +4,13 @@
 Orchestrates: render template -> check preference per channel -> persist
 (the audit log) -> best-effort push fan-out to every active device token.
 Delivery failures are logged, never raised — Band 11's "delivery retries"
-and "error handling" requirements mean one bad device token, or FCM being
-unreachable, must never fail the caller (e.g. a search-profile match
-notification firing from inside the ingestion pipeline — see
-`match_notifier.py`). Only PUSH is actually delivered in v1 (Band 11 lists
-EMAIL as a channel too, but this task's scope is FCM specifically); an
-EMAIL-channel notification is still recorded, matching the "audit log"
-requirement, but nothing sends it yet — a documented gap, not a silent one.
+and "error handling" requirements mean one bad device token, FCM being
+unreachable, or Resend being unreachable, must never fail the caller
+(e.g. a search-profile match notification firing from inside the
+ingestion pipeline — see `match_notifier.py`). PUSH and EMAIL are both
+delivered when configured (`sender`/`email_sender` respectively) — an
+EMAIL-channel notification is always recorded (the "audit log"
+requirement) regardless of whether delivery is configured.
 """
 
 from __future__ import annotations
@@ -22,6 +22,7 @@ from app.core.exceptions import NotFoundError
 from app.core.logging import get_logger
 from app.modules.notifications.application.interfaces import (
     DeviceTokenRepositoryProtocol,
+    EmailSenderProtocol,
     NotificationPreferenceRepositoryProtocol,
     NotificationRepositoryProtocol,
     NotificationSenderProtocol,
@@ -40,6 +41,8 @@ from app.modules.notifications.infrastructure.fcm_provider import (
     InvalidDeviceTokenError,
     NotificationDeliveryError,
 )
+from app.modules.notifications.infrastructure.resend_provider import EmailDeliveryError
+from app.modules.users.application.interfaces import UserRepositoryProtocol
 
 logger = get_logger(__name__)
 
@@ -52,6 +55,8 @@ class NotificationService:
         preferences: NotificationPreferenceRepositoryProtocol,
         *,
         sender: NotificationSenderProtocol | None = None,
+        email_sender: EmailSenderProtocol | None = None,
+        users: UserRepositoryProtocol | None = None,
         template_renderer: NotificationTemplateRenderer | None = None,
         preference_resolver: PreferenceResolver | None = None,
     ) -> None:
@@ -59,6 +64,12 @@ class NotificationService:
         self._device_tokens = device_tokens
         self._preferences = preferences
         self._sender = sender
+        self._email_sender = email_sender
+        # Only needed to resolve a user id to an email address for EMAIL
+        # delivery — every existing call site keeps working unchanged
+        # since this defaults to None (same optional-collaborator pattern
+        # as `analytics` elsewhere in this codebase).
+        self._users = users
         self._templates = template_renderer or NotificationTemplateRenderer()
         self._resolver = preference_resolver or PreferenceResolver()
 
@@ -98,6 +109,8 @@ class NotificationService:
                 await self._deliver_push(
                     user_id, title=rendered.title, body=rendered.body, data=data
                 )
+            elif channel == NotificationChannel.EMAIL:
+                await self._deliver_email(user_id, title=rendered.title, body=rendered.body)
 
         return created
 
@@ -121,6 +134,17 @@ class NotificationService:
                     device_id=str(device.id),
                     error=str(exc),
                 )
+
+    async def _deliver_email(self, user_id: uuid.UUID, *, title: str, body: str) -> None:
+        if self._email_sender is None or self._users is None:
+            return  # Resend not configured — see get_notification_service's gate
+        user = await self._users.get_by_id(user_id)
+        if user is None or not user.email:
+            return
+        try:
+            await self._email_sender.send_email(to=user.email, subject=title, body=body)
+        except EmailDeliveryError as exc:
+            logger.error("email_delivery_failed", user_id=str(user_id), error=str(exc))
 
     async def list_notifications(
         self, user_id: uuid.UUID, *, page: int = 1, page_size: int = 20

@@ -23,6 +23,8 @@ from app.modules.notifications.infrastructure.fcm_provider import (
     InvalidDeviceTokenError,
     NotificationDeliveryError,
 )
+from app.modules.notifications.infrastructure.resend_provider import EmailDeliveryError
+from app.modules.users.domain.entities import User
 
 
 class FakeNotificationRepository:
@@ -98,6 +100,39 @@ class FakeSender:
         self.calls.append({"device_token": device_token, "title": title, "body": body})
         if self.fail_with is not None:
             raise self.fail_with
+
+
+class FakeEmailSender:
+    def __init__(self) -> None:
+        self.calls: list[dict[str, Any]] = []
+        self.fail_with: Exception | None = None
+
+    async def send_email(self, *, to: str, subject: str, body: str) -> None:
+        self.calls.append({"to": to, "subject": subject, "body": body})
+        if self.fail_with is not None:
+            raise self.fail_with
+
+
+class FakeUserRepository:
+    def __init__(self, users: list[User] | None = None) -> None:
+        self.by_id: dict[uuid.UUID, User] = {u.id: u for u in (users or [])}
+
+    async def get_by_id(self, user_id: uuid.UUID) -> User | None:
+        return self.by_id.get(user_id)
+
+    async def get_by_email(self, email: str) -> User | None:
+        return next((u for u in self.by_id.values() if u.email == email), None)
+
+    async def create(self, user: User) -> User:
+        self.by_id[user.id] = user
+        return user
+
+    async def update(self, user: User) -> User:
+        self.by_id[user.id] = user
+        return user
+
+    async def update_password_hash(self, user_id: uuid.UUID, *, password_hash: str) -> None:
+        self.by_id[user_id].password_hash = password_hash
 
 
 async def test_notify_user_persists_notification_for_default_enabled_channels() -> None:
@@ -184,6 +219,89 @@ async def test_notify_user_deactivates_device_on_invalid_token() -> None:
     await service.notify_user(user_id, event=NotificationEvent.SAVED_SEARCH_MATCH, data={})
 
     assert await device_repo.list_active_for_user(user_id) == []
+
+
+async def test_notify_user_emails_the_users_address() -> None:
+    user_id = uuid.uuid4()
+    users = FakeUserRepository(
+        [User(id=user_id, email="deal-hunter@example.com", password_hash="x")]
+    )
+    email_sender = FakeEmailSender()
+    service = NotificationService(
+        FakeNotificationRepository(),
+        FakeDeviceTokenRepository(),
+        FakePreferenceRepository(),
+        email_sender=email_sender,
+        users=users,
+    )
+
+    await service.notify_user(
+        user_id, event=NotificationEvent.SAVED_SEARCH_MATCH, data={"offer_title": "MacBook"}
+    )
+
+    assert len(email_sender.calls) == 1
+    assert email_sender.calls[0]["to"] == "deal-hunter@example.com"
+    assert "MacBook" in email_sender.calls[0]["body"]
+
+
+async def test_notify_user_without_email_sender_configured_still_persists() -> None:
+    user_id = uuid.uuid4()
+    users = FakeUserRepository([User(id=user_id, email="x@example.com", password_hash="x")])
+    service = NotificationService(
+        FakeNotificationRepository(),
+        FakeDeviceTokenRepository(),
+        FakePreferenceRepository(),
+        users=users,
+        # email_sender intentionally omitted — Resend not configured.
+    )
+
+    created = await service.notify_user(
+        user_id, event=NotificationEvent.SAVED_SEARCH_MATCH, data={}
+    )
+
+    assert len(created) == 2  # PUSH + EMAIL records still created, just not delivered
+
+
+async def test_notify_user_without_user_lookup_configured_skips_email_delivery() -> None:
+    """`email_sender` alone isn't enough — without a `users` repository to
+    resolve the recipient's address there is nowhere to send it, so
+    delivery is skipped the same as if `email_sender` itself were unset."""
+    user_id = uuid.uuid4()
+    email_sender = FakeEmailSender()
+    service = NotificationService(
+        FakeNotificationRepository(),
+        FakeDeviceTokenRepository(),
+        FakePreferenceRepository(),
+        email_sender=email_sender,
+        # users intentionally omitted.
+    )
+
+    created = await service.notify_user(
+        user_id, event=NotificationEvent.SAVED_SEARCH_MATCH, data={}
+    )
+
+    assert len(created) == 2
+    assert email_sender.calls == []
+
+
+async def test_notify_user_does_not_raise_on_email_delivery_failure() -> None:
+    user_id = uuid.uuid4()
+    users = FakeUserRepository([User(id=user_id, email="x@example.com", password_hash="x")])
+    email_sender = FakeEmailSender()
+    email_sender.fail_with = EmailDeliveryError("Resend is down")
+    service = NotificationService(
+        FakeNotificationRepository(),
+        FakeDeviceTokenRepository(),
+        FakePreferenceRepository(),
+        email_sender=email_sender,
+        users=users,
+    )
+
+    # Must not raise.
+    created = await service.notify_user(
+        user_id, event=NotificationEvent.SAVED_SEARCH_MATCH, data={}
+    )
+    assert len(created) == 2
 
 
 async def test_notify_user_does_not_raise_on_transient_delivery_failure() -> None:
