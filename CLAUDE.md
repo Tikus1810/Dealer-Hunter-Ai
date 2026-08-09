@@ -92,8 +92,16 @@ No code generation — `fromJson`/`toJson` are hand-written.
 - **Analytics event names**: `snake_case`, validated against
   `domain/taxonomy.py`'s `AnalyticsEventName` enum — no ad-hoc string
   literals in new call sites.
-- **DB migrations**: Alembic revision files prefixed `NNNN_short_
-  description` (`0002_notification_device_tokens_and_preferences`).
+- **DB migrations**: Alembic revision *files* prefixed `NNNN_short_
+  description` (`0002_notification_device_tokens_and_preferences.py`) —
+  but the internal `revision`/`down_revision` id strings stay short
+  (`"0001"`, `"0002"`, ...), not the full filename. Found the hard way in
+  a later review pass: Alembic's `alembic_version.version_num` column
+  defaults to `VARCHAR(32)`, and a full descriptive filename as the id
+  overflows it the first time a real `alembic upgrade head` actually
+  runs — never caught by this project's integration tests, which build
+  the schema straight from `Base.metadata.create_all` and never invoke
+  Alembic at all (see `tests/integration/conftest.py`).
 - **REST routes**: `/api/v1/<module-plural-or-verb>`, auth-required
   unless explicitly a health/readiness/docs endpoint.
 
