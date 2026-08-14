@@ -37,7 +37,7 @@ dependencies:
   # per-version SDK constraints) turned out wrong in practice. Only the
   # stable imperative API above is used, present unchanged since well
   # before 13.x.
-  go_router: ^16.1.0
+  go_router: ^17.5.0
 
   # REST client (Band 04: automatic token refresh, retry policy, central
   # error handling) — see lib/core/network/.
