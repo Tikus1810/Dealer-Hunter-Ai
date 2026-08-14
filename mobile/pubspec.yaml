@@ -50,7 +50,7 @@ dependencies:
   # above. 10.3.1 requires only ^3.3.0. Only the bare default constructor
   # and read/write/delete (TokenStorage's entire surface, see
   # lib/core/network/token_storage.dart) are used — unchanged across 10.x/11.x.
-  flutter_secure_storage: ^10.3.1
+  flutter_secure_storage: ^11.0.0
 
 dev_dependencies:
   flutter_test:
