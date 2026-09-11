@@ -20,7 +20,7 @@ dependencies:
   # this was written, and this sandbox has no Flutter SDK/analyzer to verify
   # against it. 2.x is stable, extensively documented, and a contained
   # upgrade later.
-  flutter_riverpod: ^2.6.1
+  flutter_riverpod: ^3.4.3
 
   # Navigation (Band 04: go_router, deep-linking ready). Only the stable
   # imperative API (GoRouter/GoRoute/GoRouterState) is used — not the
